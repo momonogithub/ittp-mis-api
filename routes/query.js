@@ -143,3 +143,19 @@ export const transactionByLoan = async (loanId) => {
     )
   })
 }
+
+export const getProviceOffice = async () => {
+  return new Promise(function(resolve, reject) {
+    coreConnection.query(
+      `SELECT province, app_id FROM Address 
+        WHERE address_type='office'`,
+      function(err, rows, fields) {
+        if(!err){
+          resolve(rows)
+        } else {
+          reject(err)
+        }
+      }
+    )
+  })
+}

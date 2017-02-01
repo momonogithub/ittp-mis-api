@@ -27,6 +27,7 @@ export const demographicType = [
 ]
 
 export const demographicUnique = [
+  'demoGroup',
   'demoName',
   'ref'
 ]

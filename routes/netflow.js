@@ -5,7 +5,7 @@ import { uniqBy, values } from 'lodash'
 import { reConvertDecimal, fixedTwoDecimal, getNumberOfDays } from './utilize'
 import { transactionByDate, loanByDate } from './query'
 import { maxBucket, startDate } from '../setting'
-import { netflowModel } from './model/netflow'
+import { netflowModel } from '../model/netflow'
 import { netflow } from '../setting'
 
 const router = express.Router()

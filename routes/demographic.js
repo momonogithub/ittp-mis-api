@@ -3,10 +3,10 @@ import { misConnection } from '../database'
 import moment from 'moment'
 import { demographicGroup }  from './demographicGroup'
 import { startDate, maxBucket } from '../setting'
-import { appById, appByDate, loanByDate, transactionByDate } from './query'
+import { appById, appByDate, loanByDate, transactionByDate, getProviceOffice } from './query'
 import { uniqBy, groupBy, values, keys } from 'lodash'
 import { reConvertDecimal, fixedTwoDecimal, getNumberOfDays } from './utilize'
-import { demographicModel } from './model/demographic'
+import { demographicModel } from '../model/demographic'
 import { demographic } from '../setting'
 
 const router = express.Router()
@@ -94,17 +94,22 @@ export const updateDemographic = async date => {
   let datas = []
   let key = date.format('YYYY/MM')
   let end = date.clone().add(1, 'month')
-  let loans = await loanByDate(startDate, end.format("YYYY-MM-DD HH:mm:ss"))
-  let applications = await appByDate(startDate, end.format("YYYY-MM-DD HH:mm:ss"))
-  let transactions = await transactionByDate(startDate, end.format("YYYY-MM-DD HH:mm:ss"))
+  let [loans, applications, transactions, addresses] = await Promise.all([
+    loanByDate(startDate, end.format("YYYY-MM-DD HH:mm:ss")),
+    appByDate(startDate, end.format("YYYY-MM-DD HH:mm:ss")),
+    transactionByDate(startDate, end.format("YYYY-MM-DD HH:mm:ss")),
+    getProviceOffice(),
+  ])
   loans.filter(loan => loan.app_id !== 0).map(loan => {
     const tran = transactions.filter(tran => tran.loan_id === loan.loan_id)
     const app = applications.filter(app => app.id === loan.app_id)
+    const address = addresses.filter(address => address.app_id === loan.app_id)
     delete loan.created_date
     datas.push({
       ...app[0],
       ...loan,
-      transaction : tran
+      transaction : tran,
+      officeProvince : address[0].province
     })
     return loan
   })
@@ -112,7 +117,7 @@ export const updateDemographic = async date => {
   dataGroup['Total'] = { Total : datas }
   for(let demo in dataGroup) {
     for(let item  in dataGroup[demo]) {
-      dataGroup[demo][item] = await calDemographic(dataGroup[demo][item], date, end)
+      dataGroup[demo][item] = await calDemographic(dataGroup[demo][item], date, end, datas.length)
       const sqlRow = {}
       if(demo === 'Total') {
         sqlRow[`${[demographicModel[8]]}`] = 'Total'
@@ -136,7 +141,7 @@ export const updateDemographic = async date => {
   }
 }
 
-const calDemographic = async (datas, start, end) => {
+const calDemographic = async (datas, start, end, totalApp) => {
   let loanSize = 0
   let int = 0
   let newAccount = 0
@@ -186,10 +191,10 @@ const calDemographic = async (datas, start, end) => {
     averageLoanTerm: installLoan > 0 ?
       fixedTwoDecimal(loanTerm / installLoan) : 0,
     osb: reConvertDecimal(osb),
-    delinquentRate: datas.length > 0 ? 
-      fixedTwoDecimal(delinquent / datas.length) : null,
-    nplRate: datas.length > 0 ? 
-      fixedTwoDecimal(npl / datas.length) : null
+    delinquentRate: totalApp > 0 ? 
+      fixedTwoDecimal(delinquent / totalApp * 100) : null,
+    nplRate: totalApp > 0 ? 
+      fixedTwoDecimal(npl / totalApp * 100) : null
   }
 }
 

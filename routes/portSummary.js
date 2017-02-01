@@ -5,7 +5,7 @@ import { uniqBy, groupBy, values, keys } from 'lodash'
 import { startDate } from '../setting'
 import { transactionByDate, loanByDate } from './query'
 import { queryProductName } from './product'
-import { portSummaryModel } from './model/portSummary'
+import { portSummaryModel } from '../model/portSummary'
 import { 
   reConvertDecimal,
   getMultiLoans,

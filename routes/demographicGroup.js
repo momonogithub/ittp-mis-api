@@ -2,6 +2,7 @@ import moment from 'moment'
 import { appByDate } from './query'
 import { groupBy } from 'lodash'
 import { reConvertDecimal } from './utilize'
+import checkRegion  from './province'
 
 export const demographicGroup = async (datas, date) => {
   //Gender
@@ -50,59 +51,6 @@ export const demographicGroup = async (datas, date) => {
   const region5 = 'South'
   const region6 = 'North'
   const region7 = 'West'
-
-  //marital status
-  const marital1 = 'โสด'
-  const marital2 = 'สมรส'
-  const marital3 = 'หย่า'
-  const marital4 = 'หม้าย'
-  const marital5 = 'อื่นๆระบุ'
-
-  //education
-  const education1 = 'ต่ำกว่ามัธยมปลาย/ปวช.เทียบเท่า'
-  const education2 = 'อนุปริญญา/ปวส./เทียบเท่า'
-  const education3 = 'ปริญญาตรี'
-  const education4 = 'สูงกว่าปริญญาโท'
-
-  //Business
-  const business1 = 'รับราชการ'
-  const business2 = 'รัฐวิสาหกิจ'
-  const business3 = 'ธุรกิจก่อสร้าง'
-  const business4 = 'ธุรกิจการเงิน'
-  const business5 = 'ธุรกิจการเกษตร'
-  const business6 = 'ธุรกิจอุตสาหกรรม'
-  const business7 = 'ธุรกิจพาณิชย์'
-  const business8 = 'ธุรกิจให้บริการ'
-  const business9 = 'ธุรกิจโรงแรม'
-  const business10 = 'ธุรกิจการศึกษา'
-  const business11 = 'ห้างสรรพสินค้า/ซุปเปอร์มาร์เก็ต/ร้านค้าปลีก'
-  const business12 = 'อาหาร/เครื่องดื่ม/ภัตตาคาร'
-  const business13 = 'สถานเสริมความงาม/สุขภาพ'
-  const business14 = 'อื่นๆระบุ'
-
-  //Job
-  const job1 = 'ทหาร/ตำรวจ'
-  const job2 = 'แพทย์'
-  const job3 = 'พยาบาล'
-  const job4 = 'พนักงานในสายการผลิต'
-  const job5 = 'ธุรการ'
-  const job6 = 'พนักงานบุคคล'
-  const job7 = 'พนักงานบัญชี/การเงิน'
-  const job8 = 'รักษาความปลอดภัย'
-  const job9 = 'แม่บ้าน'
-  const job10 = 'เจ้าของกิจการ'
-  const job11 = 'เจ้าของกิจการ(จดทะเบียนนิติบุคคล)'
-  const job12 = 'เจ้าของกิจการ(ไม่จดทะเบียนนิติบุคคล)'
-  const job13 = 'พ่อค้า/แม่ค้า'
-  const job14 = 'พนักงานขาย'
-  const job15 = 'ขับแท็กซี่'
-  const job16 = 'วินมอเตอร์ไซด์'
-  const job17 = 'อื่นๆระบุ'
-
-  //Employment
-  const employment1 = 'พนักงานประจำ'
-  const employment2 = 'พนักงานชั่วคราว'
-  const employment3 = 'พนักงานรายวัน'
 
   //Demographic
   const total = {}
@@ -154,60 +102,30 @@ export const demographicGroup = async (datas, date) => {
     [region6] : [],
     [region7] : []
   }
-  const marital = {
-    [marital1] : [],
-    [marital2] : [],
-    [marital3] : [],
-    [marital4] : [],
-    [marital5] : [],
-  }
+
+  const marital = groupBy(datas, 'maritalStatus')
+  delete marital['null'] 
+  delete marital['undefined']
+
   const channel = groupBy(datas, 'wayCode')
-  const education = {
-    [education1] : [],
-    [education2] : [],
-    [education3] : [],
-    [education4] : []
-  }
-  const business = {
-    [business1] : [],
-    [business2] : [],
-    [business3] : [],
-    [business4] : [],
-    [business5] : [],
-    [business6] : [],
-    [business7] : [],
-    [business8] : [],
-    [business9] : [],
-    [business10] : [],
-    [business11] : [],
-    [business12] : [],
-    [business13] : [],
-    [business14] : [],
-  }
-  const job = {
-    [job1] : [],
-    [job2] : [],
-    [job3] : [],
-    [job4] : [],
-    [job5] : [],
-    [job6] : [],
-    [job7] : [],
-    [job8] : [],
-    [job9] : [],
-    [job10] : [],
-    [job11] : [],
-    [job12] : [],
-    [job13] : [],
-    [job14] : [],
-    [job15] : [],
-    [job16] : [],
-    [job17] : [],
-  }
-  const employment = {
-    [employment1] : [],
-    [employment2] : [],
-    [employment3] : [],
-  }
+  delete channel['null'] 
+  delete channel['undefined']
+
+  const education = groupBy(datas, 'education')
+  delete education['null'] 
+  delete education['undefined']
+
+  const business = groupBy(datas, 'businessType')
+  delete business['null'] 
+  delete business['undefined']
+
+  const job = groupBy(datas, 'occupation')
+  delete job['null'] 
+  delete job['undefined']
+  
+  const employment = groupBy(datas, 'employmentStatus')
+  delete employment['null'] 
+  delete employment['undefined']
 
   datas.map(data => {
     //gender
@@ -219,25 +137,25 @@ export const demographicGroup = async (datas, date) => {
 
     //LoanSize
     const credit_limit = reConvertDecimal(data.credit_limit)
-    if(credit_limit > 100000) {
+    if(credit_limit >= 100000) {
       loanSize[loanSize11].push(data)
-    }else if(credit_limit > 90000) {
+    }else if(credit_limit >= 90000) {
       loanSize[loanSize10].push(data)
-    }else if(credit_limit > 80000) {
+    }else if(credit_limit >= 80000) {
       loanSize[loanSize9].push(data)
-    }else if(credit_limit > 70000) {
+    }else if(credit_limit >= 70000) {
       loanSize[loanSize8].push(data)
-    }else if(credit_limit > 60000) {
+    }else if(credit_limit >= 60000) {
       loanSize[loanSize7].push(data)
-    }else if(credit_limit > 50000) {
+    }else if(credit_limit >= 50000) {
       loanSize[loanSize6].push(data)
-    }else if(credit_limit > 40000) {
+    }else if(credit_limit >= 40000) {
       loanSize[loanSize5].push(data)
-    }else if(credit_limit > 30000) {
-      loanSize[loanSize4].push(data)    
-    }else if(credit_limit > 20000) {
+    }else if(credit_limit >= 30000) {
+      loanSize[loanSize4].push(data) 
+    }else if(credit_limit >= 20000) {
       loanSize[loanSize3].push(data)
-    }else if(credit_limit > 10000) {
+    }else if(credit_limit >= 10000) {
       loanSize[loanSize2].push(data)
     }else {
       loanSize[loanSize1].push(data)
@@ -285,106 +203,24 @@ export const demographicGroup = async (datas, date) => {
       age[age8].push(data)
     }
 
-    //marital
-    const maritalStatus = data.maritalStatus
-    if(maritalStatus === marital1) {
-      marital[marital1].push(data)
-    } else if(maritalStatus === marital2) {
-      marital[marital2].push(data)
-    } else if(maritalStatus === marital3) {
-      marital[marital3].push(data)
-    } else if(maritalStatus === marital4) {
-      marital[marital4].push(data)
-    } else {
-      marital[marital5].push(data)
+    //region
+    const officeRegion = checkRegion(data.officeProvince)
+    if(officeRegion === region1) {
+      region[region1].push(data)
+    } else if(officeRegion === region2) {
+      region[region2].push(data)
+    } else if(officeRegion === region3) {
+      region[region3].push(data)
+    } else if(officeRegion === region4) {
+      region[region4].push(data)
+    } else if(officeRegion === region5) {
+      region[region5].push(data)
+    } else if(officeRegion === region6) {
+      region[region6].push(data)
+    } else if(officeRegion === region7) {
+      region[region7].push(data)
     }
 
-    //education
-    if(data.education === education1) {
-      education[education1].push(data)
-    } else if(data.education === education2) {
-      education[education2].push(data)
-    } else if(data.education === education3) {
-      education[education3].push(data)
-    } else if(data.education === education4) {
-      education[education4].push(data)
-    }
-
-    //business
-    if(data.businessType === business1) {
-      business[business1].push(data)
-    } else if(data.businessType === business2) {
-      business[business2].push(data)
-    } else if(data.businessType === business3) {
-      business[business3].push(data)
-    } else if(data.businessType === business4) {
-      business[business4].push(data)
-    } else if(data.businessType === business5) {
-      business[business5].push(data)
-    } else if(data.businessType === business6) {
-      business[business6].push(data)
-    } else if(data.businessType === business7) {
-      business[business7].push(data)
-    } else if(data.businessType === business8) {
-      business[business8].push(data)
-    } else if(data.businessType === business9) {
-      business[business9].push(data)
-    } else if(data.businessType === business10) {
-      business[business10].push(data)
-    } else if(data.businessType === business11) {
-      business[business11].push(data)
-    } else if(data.businessType === business12) {
-      business[business12].push(data)
-    } else if(data.businessType === business13) {
-      business[business13].push(data)
-    } else if(data.businessType === business14) {
-      business[business14].push(data)
-    }
-
-    if(data.occupation === job1) {
-      job[job1].push(data)
-    } else if(data.occupation === job2) {
-      job[job2].push(data)
-    } else if(data.occupation === job3) {
-      job[job3].push(data)
-    } else if(data.occupation === job4) {
-      job[job4].push(data)
-    } else if(data.occupation === job5) {
-      job[job5].push(data)
-    } else if(data.occupation === job6) {
-      job[job6].push(data)
-    } else if(data.occupation === job7) {
-      job[job7].push(data)
-    } else if(data.occupation === job8) {
-      job[job8].push(data)
-    } else if(data.occupation === job9) {
-      job[job9].push(data)
-    } else if(data.occupation === job10) {
-      job[job10].push(data)
-    } else if(data.occupation === job11) {
-      job[job11].push(data)
-    } else if(data.occupation === job12) {
-      job[job12].push(data)
-    } else if(data.occupation === job13) {
-      job[job13].push(data)
-    } else if(data.occupation === job14) {
-      job[job14].push(data)
-    } else if(data.occupation === job15) {
-      job[job15].push(data)
-    } else if(data.occupation === job16) {
-      job[job16].push(data)
-    } else if(data.occupation === job17) {
-      job[job17].push(data)
-    }
-
-    if(data.employment === employment1) {
-      employment[employment1].push(data)
-    } else if(data.occupation === employment2) {
-      employment[employment2].push(data)
-    } else if(data.occupation === employment3) {
-      employment[employment3].push(data)
-    } 
-    
     return data
   })
 
