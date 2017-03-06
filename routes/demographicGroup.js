@@ -11,26 +11,26 @@ export const demographicGroup = async (datas, date) => {
 
   //Loan Size
   const loanSize1 = '< 10000'
-  const loanSize2 = '10000 - 20000'
-  const loanSize3 = '20000 - 30000'
-  const loanSize4 = '30000 - 40000'
-  const loanSize5 = '40000 - 50000'
-  const loanSize6 = '50000 - 60000'
-  const loanSize7 = '60000 - 70000'
-  const loanSize8 = '70000 - 80000'
-  const loanSize9 = '80000 - 90000'
-  const loanSize10 = '90000 - 100000'
+  const loanSize2 = '10001 - 20000'
+  const loanSize3 = '20001 - 30000'
+  const loanSize4 = '30001 - 40000'
+  const loanSize5 = '40001 - 50000'
+  const loanSize6 = '50001 - 60000'
+  const loanSize7 = '60001 - 70000'
+  const loanSize8 = '70001 - 80000'
+  const loanSize9 = '80001 - 90000'
+  const loanSize10 = '90001 - 100000'
   const loanSize11 = '> 100000'
   
   //Income
   const income1 = '< 8000'
-  const income2 = '8000 - 10000'
-  const income3 = '10000 - 12000'
-  const income4 = '12000 - 15000'
-  const income5 = '15000 - 20000'
-  const income6 = '20000 - 30000'
-  const income7 = '30000 - 40000'
-  const income8 = '40000 - 50000'
+  const income2 = '8001 - 10000'
+  const income3 = '10001 - 12000'
+  const income4 = '12001 - 15000'
+  const income5 = '15001 - 20000'
+  const income6 = '20001 - 30000'
+  const income7 = '30001 - 40000'
+  const income8 = '40001 - 50000'
   const income9 = '> 50000'
 
   //Age
@@ -137,25 +137,25 @@ export const demographicGroup = async (datas, date) => {
 
     //LoanSize
     const credit_limit = reConvertDecimal(data.credit_limit)
-    if(credit_limit >= 100000) {
+    if(credit_limit > 100000) {
       loanSize[loanSize11].push(data)
-    }else if(credit_limit >= 90000) {
+    }else if(credit_limit > 90000) {
       loanSize[loanSize10].push(data)
-    }else if(credit_limit >= 80000) {
+    }else if(credit_limit > 80000) {
       loanSize[loanSize9].push(data)
-    }else if(credit_limit >= 70000) {
+    }else if(credit_limit > 70000) {
       loanSize[loanSize8].push(data)
-    }else if(credit_limit >= 60000) {
+    }else if(credit_limit > 60000) {
       loanSize[loanSize7].push(data)
-    }else if(credit_limit >= 50000) {
+    }else if(credit_limit > 50000) {
       loanSize[loanSize6].push(data)
-    }else if(credit_limit >= 40000) {
+    }else if(credit_limit > 40000) {
       loanSize[loanSize5].push(data)
-    }else if(credit_limit >= 30000) {
+    }else if(credit_limit > 30000) {
       loanSize[loanSize4].push(data) 
-    }else if(credit_limit >= 20000) {
+    }else if(credit_limit > 20000) {
       loanSize[loanSize3].push(data)
-    }else if(credit_limit >= 10000) {
+    }else if(credit_limit > 10000) {
       loanSize[loanSize2].push(data)
     }else {
       loanSize[loanSize1].push(data)
