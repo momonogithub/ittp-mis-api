@@ -1,0 +1,1 @@
+export const reConvertDecimal = data => data / 10000
