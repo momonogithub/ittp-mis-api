@@ -2,8 +2,7 @@ import moment from 'moment'
 import { reConvertDecimal } from './utilize'
 
 export const propsNumber = [
-  'cf_principal', 'cf_interest', 'cf_fee', 'min_paid',
-  
+  'cf_principal', 'cf_interest', 'cf_fee',
 ]
 
 export const propsBucket = [

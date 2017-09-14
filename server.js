@@ -64,12 +64,9 @@ app.get("/netflow/:month/:year",async function(req, res){
       // OSB calculate
       propsNumber.map(prop => {
         trans[countTran][`${prop}`] = reConvertDecimal(trans[countTran][`${prop}`])
+        temp += trans[countTran][`${prop}`]
         return prop
       })
-      temp += trans[countTran][`cf_principal`]
-      temp += trans[countTran][`cf_interest`]
-      temp += trans[countTran][`cf_fee`]
-      temp -= trans[countTran]['min_paid'] // minus min_paid
       // bucket calculate
       propsBucket.map(prop => {
         trans[countTran][`${prop}`] = reConvertDecimal(trans[countTran][`${prop}`])
