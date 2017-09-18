@@ -2,6 +2,7 @@ import { riskNetflow } from './netflow'
 import moment from 'moment'
 import express from 'express'
 import mysql from 'mysql'
+import cors from 'cors'
 
 const app = express()
 
@@ -11,6 +12,8 @@ const connection = mysql.createConnection({
   password : '1234',
   database : 'ittpdev'
 })
+
+app.use(cors())
 
 connection.connect(function(err){
   if(!err) {
