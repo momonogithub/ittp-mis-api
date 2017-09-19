@@ -30,6 +30,29 @@ app.get("/netflow/:month/:year",async function(req, res){
   res.send(result)
 })
 
+app.get("/product/getNameList",async function(req, res){
+  connection.query(
+    `SELECT product_name from Product 
+      WHERE status = 'active' `,
+    function(err, rows, fields) {
+      if(!err){
+        const nameList = []
+        rows.map(product => {
+          const productJSON = {
+            name: product.product_name,
+            status: false
+          }
+          nameList.push(productJSON)
+          return product
+        })
+        res.send(nameList)
+      } else {
+        throw (err)
+      }
+    }
+  )
+})
+
 app.listen(3000, function () {
   console.log('App listening on port 3000!')
 })

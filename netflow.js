@@ -1,5 +1,5 @@
 import moment from 'moment'
-import { reConvertDecimal } from './utilize'
+import { reConvertDecimal, commaNumber } from './utilize'
 import { uniqBy } from 'lodash'
 
 const propsNumber = [
@@ -50,14 +50,14 @@ const calculatePercent = async data => {
     let j = 0
     while(j < data[i].length) {
       if(j < 2) {
-        row.push(data[i][j])
+        row.push(commaNumber(data[i][j]))
         if( j === 1) { // if finished insert TotalOSB and OSB
-          if (i > 0 && data[i-1][j-1] !== 0) percent[0] = data[i][j] / data[i-1][j-1] * 100
+          if (i > 0 && data[i-1][j-1] !== 0) percent[0] = Math.ceil(data[i][j] / data[i-1][j-1] * 100)
           row.push(`${percent[0]}%`)
         }
       } else {
-        row.push(data[i][j])
-        if( i > 0 && data[i-1][j-1] !== 0) percent[j-1] = data[i][j] / data[i-1][j-1] * 100
+        row.push(commaNumber(data[i][j]))
+        if( i > 0 && data[i-1][j-1] !== 0) percent[j-1] = Math.ceil(data[i][j] / data[i-1][j-1] * 100)
         row.push(`${percent[j-1]}%`)
       }
       j += 1
@@ -91,15 +91,10 @@ export const riskNetflow = async (connection, date) => {
       let temp = 0
       // OSB calculate
       propsNumber.map(prop => {
-        trans[countTran][`${prop}`] = reConvertDecimal(trans[countTran][`${prop}`])
         temp += trans[countTran][`${prop}`]
         return prop
       })
       // bucket calculate
-      propsBucket.map(prop => {
-        trans[countTran][`${prop}`] = reConvertDecimal(trans[countTran][`${prop}`])
-        return prop
-      })
       while(count < bucket.length) {
         bucket[count] += trans[countTran][`${propsBucket[count + 1]}`] // not include b0
         totalOSB += trans[countTran][`${propsBucket[count + 1]}`]
@@ -111,12 +106,12 @@ export const riskNetflow = async (connection, date) => {
       countTran +=1
     }
     // push data to result
-    const arr = [totalOSB,OSB]
+    const arr = [reConvertDecimal(totalOSB),reConvertDecimal(OSB)]
     maxLength = bucket.length
     count = 0
     while(count < maxLength)
     {
-      arr.push(bucket[count])
+      arr.push(reConvertDecimal(bucket[count]))
       count+=1
     }
     count = 0
