@@ -1,4 +1,4 @@
-export const reConvertDecimal = data => (Math.ceil(data / 100)) / 100
+export const reConvertDecimal = data => Number((Math.ceil(data / 100)) / 100).toFixed(2)
 
 export const commaNumber = number => {
   const parts = number.toString().split(".");

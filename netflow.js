@@ -52,12 +52,12 @@ const calculatePercent = async data => {
       if(j < 2) {
         row.push(commaNumber(data[i][j]))
         if( j === 1) { // if finished insert TotalOSB and OSB
-          if (i > 0 && data[i-1][j-1] !== 0) percent[0] = Math.ceil(data[i][j] / data[i-1][j-1] * 100)
+          if (i > 0 && data[i-1][j-1] > 0) percent[0] = Math.ceil(data[i][j] / data[i-1][j-1] * 100)
           row.push(`${percent[0]}%`)
         }
       } else {
         row.push(commaNumber(data[i][j]))
-        if( i > 0 && data[i-1][j-1] !== 0) percent[j-1] = Math.ceil(data[i][j] / data[i-1][j-1] * 100)
+        if( i > 0 && data[i-1][j-1] > 0) percent[j-1] = Math.ceil(data[i][j] / data[i-1][j-1] * 100)
         row.push(`${percent[j-1]}%`)
       }
       j += 1
