@@ -1,45 +1,11 @@
 import moment from 'moment'
-import { reConvertDecimal, commaNumber } from './utilize'
 import { uniqBy } from 'lodash'
+import { reConvertDecimal, commaNumber } from './utilize'
+import { latestTransByDate } from './query'
 
 const propsNumber = [
   'cf_principal', 'cf_interest', 'cf_fee',
 ]
-
-const propsBucket = [
-  'b0', 'b1', 'b2', 'b3', 'b4', 'b5', 'b6', 'b7', 'b8', 'b9', 'b10', 'b11', 'b12'
-]
-
-const propsOSB = [
-  'loan_id',
-  'trans_date',
-  'trc',
-  ...propsNumber,
-  ...propsBucket,
-]
-
-const propsTRC = [
-  'LO',
-  'PO',
-]
-
-const queryTransByDate = async (connection, start, end) => {
-  return new Promise(function(resolve, reject) {
-    connection.query(
-      `SELECT ${propsOSB} from Transaction 
-        WHERE (trans_date BETWEEN ? AND ?) AND trc != 'LO' AND trc != 'PO' 
-        ORDER BY trans_date DESC`,
-      [start, end],
-      function(err, rows, fields) {
-        if(!err){
-          resolve(rows)
-        } else {
-          reject(err)
-        }
-      }
-    )
-  })
-}
 
 const calculatePercent = async data => {
   const result = []
@@ -83,7 +49,7 @@ export const riskNetflow = async (connection, date) => {
     let start = date.format("YYYY-MM-DD HH:mm:ss")
     let end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
     //query Transaction and make unique by loan_id
-    const trans = uniqBy(await queryTransByDate(connection, start, end), 'loan_id')
+    const trans = uniqBy(await latestTransByDate(connection, start, end), 'loan_id')
     maxLength = trans.length
     let countTran = 0
     // summary data by one transaction
@@ -96,8 +62,8 @@ export const riskNetflow = async (connection, date) => {
       })
       // bucket calculate
       while(count < bucket.length) {
-        bucket[count] += trans[countTran][`${propsBucket[count + 1]}`] // not include b0
-        totalOSB += trans[countTran][`${propsBucket[count + 1]}`]
+        bucket[count] += trans[countTran][`b${count + 1}`] // not include b0
+        totalOSB += trans[countTran][`b${count + 1}`]
         count += 1
       }
       count = 0

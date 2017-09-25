@@ -1,4 +1,6 @@
-import { riskNetflow } from './netflow'
+import { portTotal } from './api/portfolio'
+import { riskNetflow } from './api/netflow'
+import { getProductList } from './api/query'
 import moment from 'moment'
 import express from 'express'
 import mysql from 'mysql'
@@ -23,34 +25,22 @@ connection.connect(function(err){
   }
 })
 
+app.get("/product/getNameList",async function(req, res){
+  res.send(await getProductList(connection))
+})
+
+app.get("/portfolio/portTotal/:month/:year", async function(req, res){
+  let { year, month} = req.params // input param
+  const date = moment(`${year}${month}`, 'YYYYM').subtract(12, 'month')
+  const result = await portTotal(connection, date)
+  res.send(result)
+})
+
 app.get("/netflow/:month/:year",async function(req, res){
   let { year, month} = req.params // input param
   const date = moment(`${year}${month}`, 'YYYYM').subtract(12, 'month')
   const result = await riskNetflow(connection, date)
   res.send(result)
-})
-
-app.get("/product/getNameList",async function(req, res){
-  connection.query(
-    `SELECT product_name from Product 
-      WHERE status = 'active' `,
-    function(err, rows, fields) {
-      if(!err){
-        const nameList = []
-        rows.map(product => {
-          const productJSON = {
-            name: product.product_name,
-            status: false
-          }
-          nameList.push(productJSON)
-          return product
-        })
-        res.send(nameList)
-      } else {
-        throw (err)
-      }
-    }
-  )
 })
 
 app.listen(3000, function () {
