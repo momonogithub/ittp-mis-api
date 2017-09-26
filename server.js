@@ -31,7 +31,7 @@ app.get("/product/getNameList",async function(req, res){
 
 app.get("/portfolio/portTotal/:month/:year", async function(req, res){
   let { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM').subtract(12, 'month')
+  const date = moment(`${year}${month}`, 'YYYYM').subtract(13, 'month')
   const result = await portTotal(connection, date)
   res.send(result)
 })
