@@ -2,6 +2,7 @@ import moment from 'moment'
 import { uniqBy } from 'lodash'
 import { reConvertDecimal, commaNumber } from './utilize'
 import { latestTransByDate } from './query'
+import { maxBucket, startDate, NPL } from '../setting'
 
 const propsNumber = [
   'cf_principal', 'cf_interest', 'cf_fee',
@@ -12,18 +13,22 @@ const calculatePercent = async data => {
   let i = 0
   while(i < data.length) {
     const row = []
-    let percent = [0,0,0,0,0,0,0,0,0,0,0,0,0]
+    let percent = new Array(maxBucket + 1).fill(0)
     let j = 0
     while(j < data[i].length) {
       if(j < 2) {
         row.push(commaNumber(data[i][j]))
         if( j === 1) { // if finished insert TotalOSB and OSB
-          if (i > 0 && data[i-1][j-1] > 0) percent[0] = Math.ceil(data[i][j] / data[i-1][j-1] * 100)
+          if (i > 0 && data[i-1][j-1] > 0) {
+            percent[0] = (data[i][j] / data[i-1][j-1] * 100).toFixed(2)
+          }
           row.push(`${percent[0]}%`)
         }
       } else {
         row.push(commaNumber(data[i][j]))
-        if( i > 0 && data[i-1][j-1] > 0) percent[j-1] = Math.ceil(data[i][j] / data[i-1][j-1] * 100)
+        if( i > 0 && data[i-1][j-1] > 0) {
+          percent[j-1] = (data[i][j] / data[i-1][j-1] * 100).toFixed(2)
+        } 
         row.push(`${percent[j-1]}%`)
       }
       j += 1
@@ -44,7 +49,7 @@ export const riskNetflow = async (connection, date) => {
   while(countMonth < 13) { // while loop until 13 month
     let totalOSB = 0
     let OSB = 0
-    let bucket = [0,0,0,0,0,0,0,0,0,0,0,0]
+    let bucket = new Array(maxBucket).fill(0) // not count b0
     // build time gap
     let start = date.format("YYYY-MM-DD HH:mm:ss")
     let end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
