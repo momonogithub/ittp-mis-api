@@ -108,11 +108,11 @@ export const createTable = async (connection, tableName, table, option) => {
       `CREATE TABLE ${tableName} (${sql})`,
       function(err, rows, fields) {
         if(!err){
-          console.log('create table success')
+          console.log(`Create ${tableName} table success`)
           resolve()
         } else {
           console.log(err)
-          reject()
+          reject(err)
         }
       }
     )

@@ -1,8 +1,20 @@
+import express from 'express'
+import connection from '../database'
 import moment from 'moment'
 import { uniqBy } from 'lodash'
-import { reConvertDecimal, commaNumber } from './utilize'
+import { reConvertDecimal } from './utilize'
 import { latestTransByDate } from './query'
 import { maxBucket, startDate, NPL } from '../setting'
+
+const router = express.Router()
+
+router.get("/:month/:year",async function(req, res){
+  let { year, month} = req.params // input param
+  const date = moment(`${year}${month}`, 'YYYYM').subtract(12, 'month')
+  const result = await riskNetflow(connection, date)
+  res.send(result)
+})
+
 
 const propsNumber = [
   'cf_principal', 'cf_interest', 'cf_fee',
@@ -13,23 +25,24 @@ const calculatePercent = async data => {
   let i = 0
   while(i < data.length) {
     const row = []
-    let percent = new Array(maxBucket + 1).fill(0)
     let j = 0
     while(j < data[i].length) {
       if(j < 2) {
-        row.push(commaNumber(data[i][j]))
+        row.push(data[i][j])
         if( j === 1) { // if finished insert TotalOSB and OSB
           if (i > 0 && data[i-1][j-1] > 0) {
-            percent[0] = (data[i][j] / data[i-1][j-1] * 100).toFixed(2)
+            row.push(parseFloat((data[i][j] / data[i-1][j-1] * 100).toFixed(2)))
+          } else {
+            row.push(0)
           }
-          row.push(`${percent[0]}%`)
         }
       } else {
-        row.push(commaNumber(data[i][j]))
+        row.push(data[i][j])
         if( i > 0 && data[i-1][j-1] > 0) {
-          percent[j-1] = (data[i][j] / data[i-1][j-1] * 100).toFixed(2)
-        } 
-        row.push(`${percent[j-1]}%`)
+          row.push(parseFloat((data[i][j] / data[i-1][j-1] * 100).toFixed(2)))
+        } else {
+          row.push(0)
+        }
       }
       j += 1
     }
@@ -39,7 +52,7 @@ const calculatePercent = async data => {
   return result
 }
 
-export const riskNetflow = async (connection, date) => {
+const riskNetflow = async (connection, date) => {
   const result = []
   const rawData = []
   // count variable
@@ -91,3 +104,5 @@ export const riskNetflow = async (connection, date) => {
   }
   return await calculatePercent(rawData)
 }
+
+module.exports = router
