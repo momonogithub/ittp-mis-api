@@ -1,7 +1,8 @@
 import { uniqBy, groupBy, values, keys } from 'lodash'
 import { maxBucket, startDate, NPL } from '../setting'
 
-export const reConvertDecimal = data => parseFloat(Number((Math.ceil(data / 100)) / 100).toFixed(2))
+export const reConvertDecimal = data => Math.ceil(data / 10000)
+export const fixedTwoDecimal = data => Math.ceil(data * 100) / 100
 
 export const getMultiLoans = async loans => { // count customer with multiple loan
   let count = 0
@@ -114,4 +115,13 @@ export const calculateTrans = async trans => {
     countDelinquent, delinquentRate1To3, delinquentRate1To6, NPLRate,
   )
   return result
+}
+
+export const summaryPayment = async trans => {
+  let payment = 0
+  trans.map(tran => {
+    payment += reConvertDecimal(tran.cash_in)
+    return tran
+  })
+  return payment
 }

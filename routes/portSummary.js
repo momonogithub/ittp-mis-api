@@ -17,35 +17,35 @@ const router = express.Router()
 router.get("/getPortSummary/:month/:year", async function(req, res){
   let { year, month} = req.params // input param
   const date = moment(`${year}${month}`, 'YYYYM')
-  const result = await getPortSummary(connection, date)
+  const result = await getPortSummary(date)
   res.send(result)
 })
 
 router.get("/updatePortSummary/:month/:year", async function(req, res){
   let { year, month} = req.params // input param
   const date = moment(`${year}${month}`, 'YYYYM')
-  const result = await updatePortSummary(connection, date)
+  const result = await updatePortSummary(date)
   res.send(result)
 })
 
-const getPortSummary = async (connection, date) => {
-  const result = await portSummaryByDate(connection, date)
+const getPortSummary = async date => {
+  const result = await portSummaryByDate(date)
   return result
 }
 
-const updatePortSummary = async (connection, date) => {
-  const result = await portSummaryByDate(connection, date)
+const updatePortSummary = async date => {
+  const result = await portSummaryByDate(date)
   return result
 }
 
-const portSummaryByDate = async (connection, date) => {
+const portSummaryByDate = async date => {
   const result = []
   const start = date.format("YYYY-MM-DD HH:mm:ss")
   const end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
   const time = moment('2017-09-01T00:00:00.000Z')
   let [loans, trans] = await Promise.all([
-    loanByDate(connection, startDate, end),
-    latestTransByDate(connection, startDate, end)
+    loanByDate(startDate, end),
+    latestTransByDate(startDate, end)
   ])
   loans = groupBy(loans, 'product_id')
   trans = uniqBy(trans, 'loan_id')

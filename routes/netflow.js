@@ -11,7 +11,7 @@ const router = express.Router()
 router.get("/:month/:year",async function(req, res){
   let { year, month} = req.params // input param
   const date = moment(`${year}${month}`, 'YYYYM').subtract(12, 'month')
-  const result = await riskNetflow(connection, date)
+  const result = await riskNetflow(date)
   res.send(result)
 })
 
@@ -52,7 +52,7 @@ const calculatePercent = async data => {
   return result
 }
 
-const riskNetflow = async (connection, date) => {
+const riskNetflow = async date => {
   const result = []
   const rawData = []
   // count variable
@@ -67,7 +67,7 @@ const riskNetflow = async (connection, date) => {
     let start = date.format("YYYY-MM-DD HH:mm:ss")
     let end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
     //query Transaction and make unique by loan_id
-    const trans = uniqBy(await latestTransByDate(connection, start, end), 'loan_id')
+    const trans = uniqBy(await latestTransByDate(start, end), 'loan_id')
     maxLength = trans.length
     let countTran = 0
     // summary data by one transaction

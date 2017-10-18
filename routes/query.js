@@ -1,30 +1,6 @@
-export const getProductList = async connection => {
-  return new Promise(function(resolve, reject) {
-    connection.query(
-      `SELECT product_id, product_name FROM Product 
-        WHERE status = 'active' `,
-      function(err, rows, fields) {
-        if(!err){
-          const nameList = []
-          rows.map(product => {
-            const productJSON = {
-              id: product.product_id,
-              name: product.product_name,
-              status: false
-            }
-            nameList.push(productJSON)
-            return product
-          })
-          resolve(nameList)
-        } else {
-          reject(err)
-        }
-      }
-    )
-  })
-}
+import connection from '../database'
 
-export const latestTransByDate = async (connection, start, end) => {
+export const latestTransByDate = async (start, end) => {
   return new Promise(function(resolve, reject) {
     connection.query(
       `SELECT * FROM Transaction 
@@ -42,7 +18,7 @@ export const latestTransByDate = async (connection, start, end) => {
   })
 }
 
-export const appByDate = async (connection, start, end) => {
+export const appByDate = async (start, end) => {
   return new Promise(function(resolve, reject) {
     connection.query(
       `SELECT * FROM Applications 
@@ -60,7 +36,7 @@ export const appByDate = async (connection, start, end) => {
   })
 }
 
-export const loanByDate = async (connection, start, end) => {
+export const loanByDate = async (start, end) => {
   return new Promise(function(resolve, reject) {
     connection.query(
       `SELECT * FROM Loan 
@@ -71,47 +47,6 @@ export const loanByDate = async (connection, start, end) => {
         if(!err){
           resolve(rows)
         } else {
-          reject(err)
-        }
-      }
-    )
-  })
-}
-
-export const checkExistTable = async (connection, dbName, tableName) => {
-  return new Promise(function(resolve, reject) {
-    connection.query(
-      `SELECT * 
-      FROM information_schema.tables
-      WHERE table_schema = ? 
-          AND table_name = ?
-      LIMIT 1`,
-      [dbName, tableName],
-      function(err, rows, fields) {
-        if(!err){
-          resolve(rows)
-        } else {
-          reject(err)
-        }
-      }
-    )
-  })
-}
-
-export const createTable = async (connection, tableName, table, option) => {
-  return new Promise(function(resolve, reject) {
-    let sql = 'id INT AUTO_INCREMENT PRIMARY KEY'
-    for(let count = 0 ; count < table.length ; count += 1) {
-      sql = `${sql}, ${table[count]} ${option[count]}`
-    }
-    connection.query(
-      `CREATE TABLE ${tableName} (${sql})`,
-      function(err, rows, fields) {
-        if(!err){
-          console.log(`Create ${tableName} table success`)
-          resolve()
-        } else {
-          console.log(err)
           reject(err)
         }
       }

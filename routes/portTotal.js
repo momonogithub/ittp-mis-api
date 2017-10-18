@@ -3,32 +3,49 @@ import connection from '../database'
 import moment from 'moment'
 import { uniqBy, groupBy, values, keys } from 'lodash'
 import { startDate, NPL } from '../setting'
-import { latestTransByDate, loanByDate, appByDate } from './query'
 import { portTotalModel } from './model'
+import { 
+  latestTransByDate,
+  loanByDate,
+  appByDate } from './query'
 import { 
   reConvertDecimal,
   getMultiLoans,
   calculateLoans,
-  calculateTrans 
-} from './utilize'
+  calculateTrans,
+  fixedTwoDecimal,
+  summaryPayment } from './utilize'
 
 const router = express.Router()
 
 router.get("/getPortTotal/:month/:year", async function(req, res){
   let { year, month} = req.params // input param
   const date = moment(`${year}${month}`, 'YYYYM').subtract(13, 'month')
-  const result = await getPortTotal(connection, date)
-  res.send(result)
+  try {
+    const result = await getPortTotal(date)
+    res.status(200).send(result)
+  } catch(err) {
+    res.status(500).send(err)
+  }
+
 })
 
 router.get("/updatePortTotal/:month/:year", async function(req, res){
   let { year, month} = req.params // input param
   const date = moment(`${year}${month}`, 'YYYYM').subtract(13, 'month')
-  const result = await updatePortTotal(connection, date)
+  const result = await updatePortTotal(date)
+  result.map(prop => {
+    for(let count = 0 ; count < prop.length ; count += 1) {
+      if(count > 12 && prop[count] !== 'N/A') { // percent indexs are 12 or more
+        prop[count] = `${prop[count]}%`
+      }
+    }
+    return prop
+  })
   res.send(result)
 })
 
-const upsertPortTotal = async (connection, row) => {
+const upsertPortTotal = async row => {
   let name = `${portTotalModel[0]}`
   let value = `${row[0]}`
   let update = `${portTotalModel[0]}=${row[0]}`
@@ -43,7 +60,7 @@ const upsertPortTotal = async (connection, row) => {
   })
 }
 
-const getPortTotalByKey = async (connection, key) => {
+const getPortTotalByKey = async key => {
   return new Promise(function(resolve, reject) {
     connection.query(
       `SELECT * FROM PortTotal 
@@ -60,12 +77,12 @@ const getPortTotalByKey = async (connection, key) => {
   })
 }
 
-const updatePortTotal = async (connection, date) => {
+const updatePortTotal = async date => {
   const result = []
-  const rows = await portTotalByDate(connection, date)
+  const rows = await portTotalByDate(date)
   await Promise.all(
     rows.map(async row => {
-      await upsertPortTotal(connection, row)
+      await upsertPortTotal(row)
       const arr = []
       row.splice(-1,1) // delete key
       for(let count = 0; count < row.length; count+=1) {
@@ -82,23 +99,27 @@ const updatePortTotal = async (connection, date) => {
   return result
 }
 
-const getPortTotal = async (connection, date) => {
+const getPortTotal = async date => {
   const result = []
   for(let count = 0; count < 13 ; count ++) {
     date.add(1, 'month')
     const key = date.format('YYYYMM')
-    const row = await getPortTotalByKey(connection, key)
+    let row = await getPortTotalByKey(key)
     const arr = []
+    
     // return row of display data
     if(row.length > 0) {
-      portTotalModel.filter(item => item !== 'date').map(item => {
-        if(row[0][`${item}`] !== null) {
-          arr.push(row[0][`${item}`]) // display data map by portTotal Model
-        }else {
-          arr.push('N/A') // no data display N/A
+      row = values(row[0])
+      for(let count = 1 ; count < row.length - 1 ; count += 1) { 
+        // skip id at first index, key as last index
+        if(row[count] === null) { // percent indexs are 12 or more
+          arr.push('N/A')
+        } else if (count > 13) {
+          arr.push(`${row[count]}%`)
+        } else {
+          arr.push(row[count])
         }
-        return item
-      })
+      }
     } else {
       portTotalModel.filter(item => item !== 'date').map(item => {
         arr.push('No Data') 
@@ -110,7 +131,7 @@ const getPortTotal = async (connection, date) => {
   return result
 }
 
-const portTotalByDate = async (connection, date) => {
+const portTotalByDate = async date => {
   const result = []
   let month = 0
   let count = 0
@@ -120,30 +141,32 @@ const portTotalByDate = async (connection, date) => {
   let start = date.format("YYYY-MM-DD HH:mm:ss")
   let end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
   // query loan, apps before selected date
-  let [loans, apps] = await Promise.all([
-    loanByDate(connection, startDate, start),
-    appByDate(connection, startDate, start)
+  let [loans, apps, trans] = await Promise.all([
+    loanByDate(startDate, start),
+    appByDate(startDate, start),
+    latestTransByDate(startDate, start)
   ]) 
   while(month < 14) {
     // query loan, apps, trans on selected date
-    let [queryLoans, queryApps, trans] = await Promise.all([
-      loanByDate(connection, start, end),
-      appByDate(connection, start, end),
-      latestTransByDate(connection, start, end)
+    let [queryLoans, queryApps, queryTrans] = await Promise.all([
+      loanByDate(start, end),
+      appByDate(start, end),
+      latestTransByDate(start, end)
     ])
     apps = apps.concat(queryApps)
     loans = loans.concat(queryLoans)
-    trans = uniqBy(trans, 'loan_id')
+    trans = trans.concat(queryTrans)
+    const monthlyTrans = uniqBy(queryTrans, 'loan_id')
     const totalApps = apps.length
     const loanMonth = queryLoans.length
     // Data preparetion
-    const [multiLoan, calLoan, sumTrans] = await Promise.all([
+    const [multiLoan, calLoan, sumTrans, totalPayment] = await Promise.all([
       getMultiLoans(loans),
       calculateLoans(loans),
-      calculateTrans(trans)
-    ]) 
+      calculateTrans(monthlyTrans),
+      summaryPayment(trans)
+    ])
     // Calculate value from transaction
-    let totalPayment = 0
     // rate variables
     let growthRate = 0
     let debtRate = 0
@@ -153,26 +176,26 @@ const portTotalByDate = async (connection, date) => {
     let recovery = 0
     // Percentage calculate if not divide by 0
     if(lastMonthAcc !== 0) {
-      growthRate = parseFloat(((loanMonth - lastMonthAcc) / lastMonthAcc * 100).toFixed(2))
+      growthRate = fixedTwoDecimal((loanMonth - lastMonthAcc) / lastMonthAcc * 100)
     } else {
       growthRate = null
     } 
     if(calLoan[1] !== 0) {
-      debtRate = parseFloat((sumTrans[11] / calLoan[1] * 100).toFixed(2))
+      debtRate = fixedTwoDecimal(sumTrans[11] / calLoan[1] * 100)
     } else {
       debtRate = null
     }
     if(sumTrans[11] !== 0) {
-      delinquentRate1To3 = parseFloat((sumTrans[6] / sumTrans[11] * 100).toFixed(2))
-      delinquentRate1To6 = parseFloat((sumTrans[8] / sumTrans[11] * 100).toFixed(2))
-      NPLRate = parseFloat((sumTrans[10] / sumTrans[11] * 100).toFixed(2))
+      delinquentRate1To3 = fixedTwoDecimal(sumTrans[6] / sumTrans[11] * 100)
+      delinquentRate1To6 = fixedTwoDecimal(sumTrans[8] / sumTrans[11] * 100)
+      NPLRate = fixedTwoDecimal(sumTrans[10] / sumTrans[11] * 100)
     } else {
       delinquentRate1To3 = null
       delinquentRate1To6 = null
       NPLRate = null
     }
     if(lastNPL !== 0) {
-      recovery = parseFloat(((lastNPL - sumTrans[10]) / lastNPL * 100).toFixed(2))
+      recovery = fixedTwoDecimal((lastNPL - sumTrans[10]) / lastNPL * 100)
     } else {
       recovery = null
     }
