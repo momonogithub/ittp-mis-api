@@ -53,7 +53,7 @@ const portSummaryByDate = async date => {
   let lastNPL = new Array(products.length).fill(0)
   for(let i = 0 ; i < 2 ; i += 1 ) {
     // loop only 2 iterative
-    const [monthlyLoans, monthlyTrans] = await Promise.all([
+    let [monthlyLoans, monthlyTrans] = await Promise.all([
       loanByDate(start, end),
       getTransactionByDate(start, end)
     ])
@@ -72,7 +72,7 @@ const portSummaryByDate = async date => {
     while(loanGroup.length < productGroup.length){
       loanGroup.push([])
     }
-    const uniqTrans = uniqBy(trans, 'loan_id')
+    monthlyTrans = uniqBy(monthlyTrans, 'loan_id')
     for(let count = 0; count < loanGroup.length ; count++) {
       let activeLoan = 0
       const loansMonth = loanGroup[count].filter(loan => {
@@ -86,16 +86,17 @@ const portSummaryByDate = async date => {
       const transGroup = []
       const allTranGroup = []
       loanGroup[count].map(loan => {
-        const mapTran = uniqTrans.filter(tran => tran.loan_id === loan.loan_id)
+        const mapTran = monthlyTrans.filter(tran => tran.loan_id === loan.loan_id)
         const mapAllTran = trans.filter(tran => tran.loan_id === loan.loan_id)
-        transGroup.push(mapTran[0])
+        if(mapTran.length > 0) {
+          transGroup.push(mapTran[0])
+        }
         mapAllTran.map(tran => {
           allTranGroup.push(tran)
           return tran
         })
         return loan
       })
-      console.log(allTranGroup.length, productGroup[count])
       const [calLoans, multiLoan, calLoansMonth, sumTrans, totalPayment] = await Promise.all([
         calculateLoans(loanGroup[count]),
         getMultiLoans(loanGroup[count]),
@@ -111,7 +112,7 @@ const portSummaryByDate = async date => {
       if(i === 1 ) {
         let recovery = null
         if( lastNPL[count] > 0) {
-          recovery = (lastNPL[count] - sumTrans[10]) / lastNPL[count]  * 100
+          recovery = fixedTwoDecimal((lastNPL[count] - sumTrans[10]) / lastNPL[count]  * 100)
         }
         result.push([
           calLoans[0], sumTrans[4], calLoans[2], calLoans[3],
