@@ -3,7 +3,7 @@ import connection from '../database'
 import moment from 'moment'
 import { uniqBy } from 'lodash'
 import { reConvertDecimal } from './utilize'
-import { latestTransByDate } from './query'
+import { getTransactionByDate } from './query'
 import { maxBucket, startDate, NPL } from '../setting'
 
 const router = express.Router()
@@ -67,7 +67,7 @@ const riskNetflow = async date => {
     let start = date.format("YYYY-MM-DD HH:mm:ss")
     let end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
     //query Transaction and make unique by loan_id
-    const trans = uniqBy(await latestTransByDate(start, end), 'loan_id')
+    const trans = uniqBy(await getTransactionByDate(start, end), 'loan_id')
     maxLength = trans.length
     let countTran = 0
     // summary data by one transaction
@@ -105,4 +105,4 @@ const riskNetflow = async date => {
   return await calculatePercent(rawData)
 }
 
-module.exports = router
+export default router

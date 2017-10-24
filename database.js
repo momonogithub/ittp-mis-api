@@ -1,5 +1,5 @@
 import mysql from 'mysql'
-import { portTotalModel, portTotalOption } from './routes/model'
+import { portTotalModel, portTotalOption } from './routes/model/portTotal'
 
 const connection = mysql.createConnection({
   host     : 'localhost',

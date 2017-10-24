@@ -8,7 +8,7 @@ export const getMultiLoans = async loans => { // count customer with multiple lo
   let count = 0
   const groupLoans = values(groupBy(loans, 'citizen_id'))
   groupLoans.map(item => {
-    if(item.length > 1 ) count += 1
+    if(item.length > 1 ) { count += 1 }
     return item
   })
   return count
@@ -30,12 +30,12 @@ export const calculateLoans = async (loans) => {
   })
   // percentage check not 0
   if(totalLoan !== 0) {
-    averageSize = parseFloat(reConvertDecimal(totalSize / totalLoan))
-    averageInterest = parseFloat((interest / totalLoan).toFixed(2))
+    averageSize = reConvertDecimal(totalSize / totalLoan)
+    averageInterest = fixedTwoDecimal(interest / totalLoan)
   }
   // return value
   result.push( 
-    totalLoan, parseFloat(reConvertDecimal(totalSize)), 
+    totalLoan, reConvertDecimal(totalSize), 
     averageSize, averageInterest
   )
   return result
@@ -61,9 +61,10 @@ export const calculateTrans = async trans => {
       while(count <= maxBucket) {
         if(tran[`b${count}`] !== 0) {
           bucketSize[count-1] += tran[`b${count}`]
-        } else if (tran[`b${count}`] === 0 && count > 1) {
-          bucketCount[count-2] += 1
-          break
+          if(tran[`b${count + 1}`] === 0) {
+            bucketCount[count-1] += 1
+            break
+          }
         }
         count += 1
       }
@@ -100,9 +101,9 @@ export const calculateTrans = async trans => {
   let delinquentRate1To6 = 0
   let NPLRate = 0
   if(totalDelinquent !== 0) {
-    delinquentRate1To3 = parseFloat((size1To3 / totalDelinquent * 100).toFixed(2))
-    delinquentRate1To6 = parseFloat((size1To6 / totalDelinquent * 100).toFixed(2))
-    NPLRate = parseFloat((NPLSize / totalDelinquent * 100).toFixed(2))
+    delinquentRate1To3 = fixedTwoDecimal(size1To3 / totalDelinquent * 100)
+    delinquentRate1To6 = fixedTwoDecimal(size1To6 / totalDelinquent * 100)
+    NPLRate = fixedTwoDecimal(NPLSize / totalDelinquent * 100)
   } else {
     delinquentRate1To3 = null
     delinquentRate1To6 = null
@@ -111,7 +112,7 @@ export const calculateTrans = async trans => {
 
   result.push(
     closed, nonStarter, bucketSize, bucketCount, active, count1To3, size1To3,
-    count1To6, size1To6, countNPL, NPLSize, parseFloat(reConvertDecimal(totalDelinquent)),
+    count1To6, size1To6, countNPL, NPLSize, reConvertDecimal(totalDelinquent),
     countDelinquent, delinquentRate1To3, delinquentRate1To6, NPLRate,
   )
   return result

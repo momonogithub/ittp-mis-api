@@ -1,10 +1,10 @@
 import connection from '../database'
 
-export const latestTransByDate = async (start, end) => {
+export const getTransactionByDate = async (start, end) => {
   return new Promise(function(resolve, reject) {
     connection.query(
       `SELECT * FROM Transaction 
-        WHERE (trans_date BETWEEN ? AND ?)
+        WHERE trans_date >= ? AND trans_date < ?
         ORDER BY id DESC`,
       [start, end],
       function(err, rows, fields) {
@@ -22,7 +22,7 @@ export const appByDate = async (start, end) => {
   return new Promise(function(resolve, reject) {
     connection.query(
       `SELECT * FROM Applications 
-        WHERE (createdDate BETWEEN ? AND ?)
+        WHERE createdDate >= ? AND createdDate < ?
         ORDER BY createdDate ASC`,
       [start, end],
       function(err, rows, fields) {
@@ -40,7 +40,7 @@ export const loanByDate = async (start, end) => {
   return new Promise(function(resolve, reject) {
     connection.query(
       `SELECT * FROM Loan 
-        WHERE (open_date BETWEEN ? AND ?)
+        WHERE open_date >= ? AND open_date < ?
         ORDER BY open_date ASC`,
       [start, end],
       function(err, rows, fields) {

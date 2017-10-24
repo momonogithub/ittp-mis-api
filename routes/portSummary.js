@@ -2,21 +2,24 @@ import express from 'express'
 import connection from '../database'
 import moment from 'moment'
 import { uniqBy, groupBy, values, keys } from 'lodash'
-import { startDate, NPL } from '../setting'
-import { latestTransByDate, loanByDate, appByDate } from './query'
-import { portTotalModel } from './model'
+import { startDate } from '../setting'
+import { getTransactionByDate, loanByDate, appByDate } from './query'
+import { queryProductName } from './product'
+import { portTotalModel } from './model/portTotal'
 import { 
   reConvertDecimal,
   getMultiLoans,
   calculateLoans,
-  calculateTrans 
+  calculateTrans,
+  fixedTwoDecimal,
+  summaryPayment
 } from './utilize'
 
 const router = express.Router()
 
 router.get("/getPortSummary/:month/:year", async function(req, res){
   let { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM')
+  const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
   const result = await getPortSummary(date)
   res.send(result)
 })
@@ -33,59 +36,98 @@ const getPortSummary = async date => {
   return result
 }
 
-const updatePortSummary = async date => {
-  const result = await portSummaryByDate(date)
-  return result
-}
+// const updatePortSummary = async date => {
+//   const result = await portSummaryByDate(date)
+//   return result
+// }
 
 const portSummaryByDate = async date => {
   const result = []
-  const start = date.format("YYYY-MM-DD HH:mm:ss")
-  const end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
-  const time = moment('2017-09-01T00:00:00.000Z')
-  let [loans, trans] = await Promise.all([
-    loanByDate(startDate, end),
-    latestTransByDate(startDate, end)
+  let start = date.format("YYYY-MM-DD")
+  let end = date.add(1, 'month').format("YYYY-MM-DD")
+  let [loans, trans, products] = await Promise.all([
+    loanByDate(startDate, start),
+    getTransactionByDate(startDate, start),
+    queryProductName()
   ])
-  loans = groupBy(loans, 'product_id')
-  trans = uniqBy(trans, 'loan_id')
-  const loanKey = keys(loans)
-  const loanValue = values(loans)
-  for(let count = 0; count < loanKey.length ; count++) {
-    let activeLoan = 0
-    let totalPayment = 0
-    const productId = loanKey[count]
-    const loansMonth = loanValue[count].filter(loan => {
-      const time = moment(loan.open_date)
-      if(time.isBetween(start, end)) {
-        return true
-      } else {
-        return false
+  let lastNPL = new Array(products.length).fill(0)
+  for(let i = 0 ; i < 2 ; i += 1 ) {
+    // loop only 2 iterative
+    const [monthlyLoans, monthlyTrans] = await Promise.all([
+      loanByDate(start, end),
+      getTransactionByDate(start, end)
+    ])
+    loans = loans.concat(monthlyLoans)
+    trans = trans.concat(monthlyTrans)
+    const loanGroup = [loans]
+    const productGroup = ['total']
+    const loansByProduct = values(groupBy(loans, 'product_id'))
+    loansByProduct.map(group => {
+      loanGroup.push(group)
+      return group
+    })
+    products.map(product => {
+      productGroup.push(product.id)
+    })
+    while(loanGroup.length < productGroup.length){
+      loanGroup.push([])
+    }
+    const uniqTrans = uniqBy(trans, 'loan_id')
+    for(let count = 0; count < loanGroup.length ; count++) {
+      let activeLoan = 0
+      const loansMonth = loanGroup[count].filter(loan => {
+        const time = moment(loan.open_date)
+        if(time.isBetween(start, end)) {
+          return true
+        } else {
+          return false
+        }
+      })
+      const transGroup = []
+      const allTranGroup = []
+      loanGroup[count].map(loan => {
+        const mapTran = uniqTrans.filter(tran => tran.loan_id === loan.loan_id)
+        const mapAllTran = trans.filter(tran => tran.loan_id === loan.loan_id)
+        transGroup.push(mapTran[0])
+        mapAllTran.map(tran => {
+          allTranGroup.push(tran)
+          return tran
+        })
+        return loan
+      })
+      console.log(allTranGroup.length, productGroup[count])
+      const [calLoans, multiLoan, calLoansMonth, sumTrans, totalPayment] = await Promise.all([
+        calculateLoans(loanGroup[count]),
+        getMultiLoans(loanGroup[count]),
+        calculateLoans(loansMonth),
+        calculateTrans(transGroup),
+        summaryPayment(allTranGroup)
+      ])
+      const summary = `${productGroup[count]}${date.format('YYYYMM')}`
+      let mtdRate = null
+      if (calLoans[0] > 0) {
+        mtdRate = fixedTwoDecimal(sumTrans[0] / calLoans[0])
       }
-    })
-    const transGroup = []
-    loanValue[count].map(loan => {
-      const mapTran = trans.filter(tran => tran.loan_id === loan.loan_id)
-      transGroup.push(mapTran[0])
-      return loan
-    })
-    const [calLoans, multiLoan, calLoansMonth, sumTrans] = await Promise.all([
-      calculateLoans(loanValue[count]),
-      getMultiLoans(loans),
-      calculateLoans(loansMonth),
-      calculateTrans(transGroup)
-    ])
-    let recovery = 0
-    const summary = `${loanKey[count]}${date.format('YYYYMM')}`
-    result.push([
-      calLoans[0], sumTrans[4], calLoans[2], calLoans[3],
-      calLoans[1], multiLoan, totalPayment, calLoansMonth[0],
-      calLoansMonth[1], calLoansMonth[2], calLoansMonth[3], sumTrans[0],
-      parseFloat((sumTrans[0] / calLoans[0]).toFixed(2)), sumTrans[7],
-      sumTrans[9], sumTrans[13], sumTrans[14], sumTrans[15], recovery, summary
-    ])
+      if(i === 1 ) {
+        let recovery = null
+        if( lastNPL[count] > 0) {
+          recovery = (lastNPL[count] - sumTrans[10]) / lastNPL[count]  * 100
+        }
+        result.push([
+          calLoans[0], sumTrans[4], calLoans[2], calLoans[3],
+          calLoans[1], multiLoan, totalPayment, calLoansMonth[0],
+          calLoansMonth[1], calLoansMonth[2], calLoansMonth[3], sumTrans[0],
+          mtdRate, sumTrans[7], sumTrans[9], sumTrans[13], 
+          sumTrans[14], sumTrans[15], recovery, summary
+        ])
+      } else {
+        lastNPL[count] = sumTrans[10]
+      }
+    }
+    start = date.format("YYYY-MM-DD")
+    end = date.add(1, 'month').format("YYYY-MM-DD")
   }
   return result
 }
 
-module.exports = router
+export default router

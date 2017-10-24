@@ -3,9 +3,9 @@ import connection from '../database'
 import moment from 'moment'
 import { uniqBy, groupBy, values, keys } from 'lodash'
 import { startDate, NPL } from '../setting'
-import { portTotalModel } from './model'
+import { portTotalModel } from './model/portTotal'
 import { 
-  latestTransByDate,
+  getTransactionByDate,
   loanByDate,
   appByDate } from './query'
 import { 
@@ -51,8 +51,8 @@ const upsertPortTotal = async row => {
   let update = `${portTotalModel[0]}=${row[0]}`
   for(let count = 1 ; count < row.length ; count ++) {
     name = name.concat(`, ${portTotalModel[count]}`)
-    value = value.concat(`, ${row[count]}`)
-    update = update.concat(`, ${portTotalModel[count]}=${row[count]}`)
+    value = value.concat(`, ${connection.escape(row[count])}`)
+    update = update.concat(`, ${portTotalModel[count]}=${connection.escape(row[count])}`)
   }
   connection.query(`INSERT INTO PortTotal (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
   function (err, result) {
@@ -138,20 +138,20 @@ const portTotalByDate = async date => {
   let lastMonthAcc = 0
   let lastNPL = 0
   let key = date.format('YYYYMM')
-  let start = date.format("YYYY-MM-DD HH:mm:ss")
-  let end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
+  let start = date.format("YYYY/MM/DD")
+  let end = date.add(1, 'month').format("YYYY/MM/DD")
   // query loan, apps before selected date
   let [loans, apps, trans] = await Promise.all([
     loanByDate(startDate, start),
     appByDate(startDate, start),
-    latestTransByDate(startDate, start)
-  ]) 
+    getTransactionByDate(startDate, start)
+  ])
   while(month < 14) {
     // query loan, apps, trans on selected date
     let [queryLoans, queryApps, queryTrans] = await Promise.all([
       loanByDate(start, end),
       appByDate(start, end),
-      latestTransByDate(start, end)
+      getTransactionByDate(start, end)
     ])
     apps = apps.concat(queryApps)
     loans = loans.concat(queryLoans)
@@ -168,43 +168,33 @@ const portTotalByDate = async date => {
     ])
     // Calculate value from transaction
     // rate variables
-    let growthRate = 0
-    let debtRate = 0
-    let delinquentRate1To3 = 0
-    let delinquentRate1To6 = 0
-    let NPLRate = 0
-    let recovery = 0
+    let growthRate = null
+    let debtRate = null
+    let delinquentRate1To3 = null
+    let delinquentRate1To6 = null
+    let NPLRate = null
+    let recovery = null
     // Percentage calculate if not divide by 0
     if(lastMonthAcc !== 0) {
       growthRate = fixedTwoDecimal((loanMonth - lastMonthAcc) / lastMonthAcc * 100)
-    } else {
-      growthRate = null
-    } 
+    }
     if(calLoan[1] !== 0) {
       debtRate = fixedTwoDecimal(sumTrans[11] / calLoan[1] * 100)
-    } else {
-      debtRate = null
     }
     if(sumTrans[11] !== 0) {
       delinquentRate1To3 = fixedTwoDecimal(sumTrans[6] / sumTrans[11] * 100)
       delinquentRate1To6 = fixedTwoDecimal(sumTrans[8] / sumTrans[11] * 100)
       NPLRate = fixedTwoDecimal(sumTrans[10] / sumTrans[11] * 100)
-    } else {
-      delinquentRate1To3 = null
-      delinquentRate1To6 = null
-      NPLRate = null
     }
     if(lastNPL !== 0) {
       recovery = fixedTwoDecimal((lastNPL - sumTrans[10]) / lastNPL * 100)
-    } else {
-      recovery = null
     }
     if(month !== 0) { // not count first month
       result.push([
         calLoan[0], totalApps, multiLoan, loanMonth, sumTrans[0],
         sumTrans[12], sumTrans[9], sumTrans[1], calLoan[1],
         reConvertDecimal(sumTrans[8]), totalPayment,
-        reConvertDecimal(sumTrans[11]), calLoan[2],
+        sumTrans[11], calLoan[2],
         calLoan[3], growthRate, debtRate, sumTrans[13],
         sumTrans[14], sumTrans[15], recovery, key,
       ])
@@ -212,11 +202,11 @@ const portTotalByDate = async date => {
     lastMonthAcc = loanMonth
     lastNPL = sumTrans[10]
     key = date.format('YYYYMM')
-    start = date.format("YYYY-MM-DD HH:mm:ss")
-    end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
+    start = date.format("YYYY/MM/DD")
+    end = date.add(1, 'month').format("YYYY/MM/DD")
     month += 1
   }
   return result
 }
 
-module.exports = router
+export default router
