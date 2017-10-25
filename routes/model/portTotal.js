@@ -19,7 +19,7 @@ export const portTotalModel = [
   'delinquent_rate1_3',
   'npl_rate',
   'recovery_rate',
-  'date',
+  'ref',
 ]
 
 export const portTotalOption = [

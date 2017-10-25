@@ -1,5 +1,6 @@
 import mysql from 'mysql'
 import { portTotalModel, portTotalOption } from './routes/model/portTotal'
+import { portSummaryModel, portSummaryOption } from './routes/model/portSummary'
 
 const connection = mysql.createConnection({
   host     : 'localhost',
@@ -14,6 +15,10 @@ connection.connect(async function(err){
     let sql = await checkExistTable('ittpdev', 'PortTotal')
     if(!(sql.length > 0)) {
       await createTable('PortTotal', portTotalModel, portTotalOption)
+    }
+    sql = await checkExistTable('ittpdev', 'PortSummary')
+    if(!(sql.length > 0)) {
+      await createTable('PortSummary', portSummaryModel, portSummaryOption)
     }
     console.log('Connection Successful')
   } else {

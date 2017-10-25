@@ -5,7 +5,7 @@ import { uniqBy, groupBy, values, keys } from 'lodash'
 import { startDate } from '../setting'
 import { getTransactionByDate, loanByDate, appByDate } from './query'
 import { queryProductName } from './product'
-import { portTotalModel } from './model/portTotal'
+import { portSummaryModel } from './model/portSummary'
 import { 
   reConvertDecimal,
   getMultiLoans,
@@ -19,31 +19,79 @@ const router = express.Router()
 
 router.get("/getPortSummary/:month/:year", async function(req, res){
   let { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
+  const date = moment(`${year}${month}`, 'YYYYM')
   const result = await getPortSummary(date)
   res.send(result)
 })
 
 router.get("/updatePortSummary/:month/:year", async function(req, res){
   let { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM')
+  const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
   const result = await updatePortSummary(date)
   res.send(result)
 })
 
 const getPortSummary = async date => {
-  const result = await portSummaryByDate(date)
+  const result = []
+  const key = [`total${date.format('YYYYMM')}`]
+  const products = await queryProductName()
+  products.map(product => {
+    key.push(`${product.id}${date.format('YYYYMM')}`)
+    return product
+  })
+  for(let ref = 0 ; ref < key.length ; ref += 1) {
+    const arr = []
+    let row = await getPortSummaryByKey(key[ref])
+    if(row.length > 0) {
+      row = values(row[0])
+      for(let count = 1 ; count < row.length - 1 ; count += 1) { 
+        // skip id at first index, key as last index
+        if(row[count] === null) { // percent indexs are 16 or more
+          arr.push('N/A')
+        } else if (count > 15) {
+          arr.push(`${row[count]}%`)
+        }
+        else {
+          arr.push(row[count])
+        }
+      }
+    } else {
+      portSummaryModel.filter(item => item !== 'ref').map(item => {
+        arr.push('No Data') 
+        return item
+      })
+    }
+    result.push(arr)
+  }
   return result
 }
 
-// const updatePortSummary = async date => {
-//   const result = await portSummaryByDate(date)
-//   return result
-// }
+const updatePortSummary = async date => {
+  const result = []
+  const portSummary = await portSummaryByDate(date)
+  await Promise.all(
+    portSummary.map(async row => {
+      await upsertPortSummary(row)
+      const arr = []
+      row.splice(-1,1) // delete key
+      for(let count = 0; count < row.length; count+=1) {
+        if(row[count] === null) {
+          arr.push('N/A')
+        } else {
+          arr.push(row[count])
+        }
+      }
+      result.push(arr)
+      return row
+    })
+  )
+  return result
+}
 
 const portSummaryByDate = async date => {
   const result = []
   let start = date.format("YYYY-MM-DD")
+  let ref = date.format('YYYYMM')
   let end = date.add(1, 'month').format("YYYY-MM-DD")
   let [loans, trans, products] = await Promise.all([
     loanByDate(startDate, start),
@@ -104,7 +152,7 @@ const portSummaryByDate = async date => {
         calculateTrans(transGroup),
         summaryPayment(allTranGroup)
       ])
-      const summary = `${productGroup[count]}${date.format('YYYYMM')}`
+      const summary = `${productGroup[count]}${ref}`
       let mtdRate = null
       if (calLoans[0] > 0) {
         mtdRate = fixedTwoDecimal(sumTrans[0] / calLoans[0])
@@ -126,9 +174,45 @@ const portSummaryByDate = async date => {
       }
     }
     start = date.format("YYYY-MM-DD")
+    ref = date.format('YYYYMM')
     end = date.add(1, 'month').format("YYYY-MM-DD")
   }
+  console.log('finish')
   return result
+}
+
+const getPortSummaryByKey = async key => {
+  return new Promise(function(resolve, reject) {
+    connection.query(
+      `SELECT * FROM PortSummary WHERE ref = ?`,
+      [key],
+      function(err, rows, fields) {
+        if(!err){
+          resolve(rows)
+        } else {
+          reject(err)
+        }
+      }
+    )
+  })
+}
+
+const upsertPortSummary = async row => {
+  let name = ''
+  let value = ''
+  let update = ''
+  for(let count = 0 ; count < row.length ; count ++) {
+    name = name.concat(`${portSummaryModel[count]}, `)
+    value = value.concat(`${connection.escape(row[count])}, `)
+    update = update.concat(`${portSummaryModel[count]}=${connection.escape(row[count])}, `)
+  }
+  name = name.slice(0, name.length-2)
+  value = value.slice(0, value.length-2)
+  update = update.slice(0, update.length-2)
+  connection.query(`INSERT INTO PortSummary (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
+  function (err, result) {
+    if (err) throw err;
+  })
 }
 
 export default router

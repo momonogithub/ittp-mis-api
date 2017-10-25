@@ -45,38 +45,6 @@ router.get("/updatePortTotal/:month/:year", async function(req, res){
   res.send(result)
 })
 
-const upsertPortTotal = async row => {
-  let name = `${portTotalModel[0]}`
-  let value = `${row[0]}`
-  let update = `${portTotalModel[0]}=${row[0]}`
-  for(let count = 1 ; count < row.length ; count ++) {
-    name = name.concat(`, ${portTotalModel[count]}`)
-    value = value.concat(`, ${connection.escape(row[count])}`)
-    update = update.concat(`, ${portTotalModel[count]}=${connection.escape(row[count])}`)
-  }
-  connection.query(`INSERT INTO PortTotal (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
-  function (err, result) {
-    if (err) throw err;
-  })
-}
-
-const getPortTotalByKey = async key => {
-  return new Promise(function(resolve, reject) {
-    connection.query(
-      `SELECT * FROM PortTotal 
-        WHERE date = ?`,
-      [key],
-      function(err, rows, fields) {
-        if(!err){
-          resolve(rows)
-        } else {
-          reject(err)
-        }
-      }
-    )
-  })
-}
-
 const updatePortTotal = async date => {
   const result = []
   const rows = await portTotalByDate(date)
@@ -121,7 +89,7 @@ const getPortTotal = async date => {
         }
       }
     } else {
-      portTotalModel.filter(item => item !== 'date').map(item => {
+      portTotalModel.filter(item => item !== 'ref').map(item => {
         arr.push('No Data') 
         return item
       })
@@ -207,6 +175,40 @@ const portTotalByDate = async date => {
     month += 1
   }
   return result
+}
+
+const getPortTotalByKey = async key => {
+  return new Promise(function(resolve, reject) {
+    connection.query(
+      `SELECT * FROM PortTotal WHERE ref = ?`,
+      [key],
+      function(err, rows, fields) {
+        if(!err){
+          resolve(rows)
+        } else {
+          reject(err)
+        }
+      }
+    )
+  })
+}
+
+const upsertPortTotal = async row => {
+  let name = ''
+  let value = ''
+  let update = ''
+  for(let count = 0 ; count < row.length ; count ++) {
+    name = name.concat(`${portTotalModel[count]}, `)
+    value = value.concat(`${connection.escape(row[count])}, `)
+    update = update.concat(`${portTotalModel[count]}=${connection.escape(row[count])}, `)
+  }
+  name = name.slice(0, name.length-2)
+  value = value.slice(0, value.length-2)
+  update = update.slice(0, update.length-2)
+  connection.query(`INSERT INTO PortTotal (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
+  function (err, result) {
+    if (err) throw err;
+  })
 }
 
 export default router
