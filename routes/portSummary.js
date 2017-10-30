@@ -18,21 +18,21 @@ import {
 const router = express.Router()
 
 router.get("/getPortSummary/:month/:year", async function(req, res){
-  let { year, month} = req.params // input param
+  const { year, month} = req.params // input param
   const date = moment(`${year}${month}`, 'YYYYM')
   const result = await getPortSummary(date)
   res.send(result)
 })
 
 router.get("/updatePortSummary/:month/:year", async function(req, res){
-  let { year, month} = req.params // input param
+  const { year, month} = req.params // input param
   const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
   const result = await updatePortSummary(date)
   res.send(result)
 })
 
 const getPortSummary = async date => {
-  const result = []
+  const result = {}
   const key = [`total${date.format('YYYYMM')}`]
   const products = await queryProductName()
   products.map(product => {
@@ -40,48 +40,53 @@ const getPortSummary = async date => {
     return product
   })
   for(let ref = 0 ; ref < key.length ; ref += 1) {
-    const arr = []
+    const month = {}
     let row = await getPortSummaryByKey(key[ref])
     if(row.length > 0) {
       row = values(row[0])
-      for(let count = 1 ; count < row.length - 1 ; count += 1) { 
+      row.splice(-1,1)
+      for(let count = 1 ; count < row.length ; count += 1) { 
         // skip id at first index, key as last index
-        if(row[count] === null) { // percent indexs are 16 or more
-          arr.push('N/A')
-        } else if (count > 15) {
-          arr.push(`${row[count]}%`)
-        }
-        else {
-          arr.push(row[count])
+        if(row[count] === null) { // percent indexs are 12 or more
+          month[`${portSummaryModel[count - 1]}`] ='N/A'
+        } else if (count > 16) {
+          month[`${portSummaryModel[count - 1]}`] = `${row[count]}%`
+        } else {
+          month[`${portSummaryModel[count - 1]}`] = row[count]
         }
       }
     } else {
       portSummaryModel.filter(item => item !== 'ref').map(item => {
-        arr.push('No Data') 
+        month[`${item}`] = 'No Data' 
         return item
       })
     }
-    result.push(arr)
+    result[ref] = month
   }
   return result
 }
 
 const updatePortSummary = async date => {
-  const result = []
+  const result = {}
   const portSummary = await portSummaryByDate(date)
+  let item = 0
   await Promise.all(
     portSummary.map(async row => {
       await upsertPortSummary(row)
-      const arr = []
+      const month = {}
+      const key = row[row.length-1]
       row.splice(-1,1) // delete key
       for(let count = 0; count < row.length; count+=1) {
         if(row[count] === null) {
-          arr.push('N/A')
+          month[`${portSummaryModel[count]}`] = 'N/A'
+        } else if(count > 12) {
+          month[`${portSummaryModel[count]}`] = `${row[count]}%`
         } else {
-          arr.push(row[count])
+          month[`${portSummaryModel[count]}`] = row[count]
         }
       }
-      result.push(arr)
+      result[item] = month
+      item += 1
       return row
     })
   )
