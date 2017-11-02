@@ -80,9 +80,8 @@ const riskNetflow = async date => {
       })
       // bucket calculate
       while(count < bucket.length) {
-        console.log(count)
-        bucket[count] += trans[countTran][`b${count}`]
-        totalOSB += trans[countTran][`b${count  }`]
+        bucket[count] += trans[countTran][`b${count + 1}`] // not include b0
+        totalOSB += trans[countTran][`b${count + 1}`]
         count += 1
       }
       count = 0

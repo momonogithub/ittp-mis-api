@@ -5,27 +5,27 @@ const router = express.Router()
 
 router.get('/getNameList', async function(req, res){
   try {
-    const result = await queryProductName()
+    const result = await queryWayCode()
     res.status(200).send(result)
   } catch (err) {
     res.status(500).send(err)
   }
 })
 
-export const queryProductName = async () => {
+export const queryWayCode = async () => {
   return new Promise(function(resolve, reject) {
     connection.query(
-      `SELECT product_id, product_name FROM Product 
-        WHERE status = 'active' ORDER BY product_id ASC `,
+      `SELECT code, name FROM WayCode 
+        WHERE status = 'active' ORDER BY id ASC `,
       function(err, rows, fields) {
         if(!err){
           const nameList = {}
-          rows.map(product => {
-            nameList[`${product.product_id}`] = {
-              name: product.product_name,
+          rows.map(wayCode => {
+            nameList[`${wayCode.code}`] = {
+              name: wayCode.name,
               status: true
             }
-            return product
+            return wayCode
           })
           resolve(nameList)
         } else {

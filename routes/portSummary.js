@@ -35,10 +35,9 @@ const getPortSummary = async date => {
   const result = {}
   const key = [`total${date.format('YYYYMM')}`]
   const products = await queryProductName()
-  products.map(product => {
-    key.push(`${product.id}${date.format('YYYYMM')}`)
-    return product
-  })
+  for(let item in products) {
+    key.push(`${item}${date.format('YYYYMM')}`)
+  }
   for(let ref = 0 ; ref < key.length ; ref += 1) {
     const month = {}
     let row = await getPortSummaryByKey(key[ref])
@@ -103,7 +102,7 @@ const portSummaryByDate = async date => {
     getTransactionByDate(startDate, start),
     queryProductName()
   ])
-  let lastNPL = new Array(products.length).fill(0)
+  let lastNPL = new Array(Object.keys(products).length).fill(0)
   for(let i = 0 ; i < 2 ; i += 1 ) {
     // loop only 2 iterative
     let [monthlyLoans, monthlyTrans] = await Promise.all([
@@ -119,9 +118,9 @@ const portSummaryByDate = async date => {
       loanGroup.push(group)
       return group
     })
-    products.map(product => {
-      productGroup.push(product.id)
-    })
+    for(let item in products) {
+      productGroup.push(item)
+    }
     while(loanGroup.length < productGroup.length){
       loanGroup.push([])
     }
