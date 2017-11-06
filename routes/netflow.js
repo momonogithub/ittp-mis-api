@@ -48,7 +48,7 @@ const getNetflow = async date => {
       const bucket = []
       const percentBucket = []
       for(let item = 4 ; item < row.length ; item += 1) {
-        if(item < maxBucket + 3) {
+        if(item < maxBucket + 4) {
           bucket.push(row[item])
         } else {
           if (row[item] === null) {
@@ -64,7 +64,7 @@ const getNetflow = async date => {
       month.osb = 'No Data'
       month.osbTotal = 'No Data'
       month.osbPercent = 'N/A'
-      month.bucket = new Array(maxBucket).fill(0)
+      month.bucket = new Array(maxBucket).fill('No Data')
       month.percentBucket = new Array(maxBucket).fill('N/A')
     }
     result[key] = month
