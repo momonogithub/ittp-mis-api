@@ -44,7 +44,7 @@ const getNetflow = async date => {
       row.splice(-1,1)
       month.osb = row[1]
       month.osbTotal = row[2]
-      month.osbPercent = `${row[3]}%`
+      month.osbPercent = row[3] === null? 'N/A' : `${row[3]}%`
       const bucket = []
       const percentBucket = []
       for(let item = 4 ; item < row.length ; item += 1) {
