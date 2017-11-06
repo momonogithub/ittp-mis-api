@@ -53,3 +53,20 @@ export const loanByDate = async (start, end) => {
     )
   })
 }
+
+export const loanById = async (loanId) => {
+  return new Promise(function(resolve, reject) {
+    connection.query(
+      `SELECT * FROM Loan
+        WHERE loan_id = ? AND status = 'active'`,
+      [loanId],
+      function(err, rows, fields) {
+        if(!err){
+          resolve(rows)
+        } else {
+          reject(err)
+        }
+      }
+    )
+  })
+}

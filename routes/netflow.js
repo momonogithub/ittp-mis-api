@@ -1,108 +1,193 @@
 import express from 'express'
 import connection from '../database'
 import moment from 'moment'
-import { uniqBy } from 'lodash'
-import { reConvertDecimal, fixedTwoDecimal } from './utilize'
-import { getTransactionByDate } from './query'
+import { uniqBy, values } from 'lodash'
+import { reConvertDecimal, fixedTwoDecimal, getNumberOfDays } from './utilize'
+import { getTransactionByDate, loanById } from './query'
 import { maxBucket, startDate, NPL } from '../setting'
+import { netflowModel } from './model/netflow'
 
 const router = express.Router()
 
-router.get("/:month/:year",async function(req, res){
+router.get("/getNetflow/:month/:year", async function(req, res){
   const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM').subtract(12, 'month')
-  const result = await riskNetflow(date)
-  res.send(result)
+  const date = moment(`${year}${month}`, 'YYYYM').subtract(13, 'month')
+  try {
+    const result = await getNetflow(date)
+    res.status(200).send(result)
+  } catch(err) {
+    res.status(500).send(err)
+  }
 })
 
+router.get("/updateNetflow/:month/:year",async function(req, res){
+  const { year, month} = req.params // input param
+  const date = moment(`${year}${month}`, 'YYYYM').subtract(13, 'month')
+  try {
+    const result = await updateNetflow(date)
+    res.status(200).send(result)
+  } catch(err) {
+    res.status(500).send(err)
+  }
+})
 
-const propsNumber = [
-  'cf_principal', 'cf_interest', 'cf_fee',
-]
-
-const insertPercent = async data => {
-  const result = []
-  let i = 0
-  while(i < data.length) {
-    const row = []
-    let j = 0
-    while(j < data[i].length) {
-      if(j < 2) {
-        row.push(data[i][j])
-        if( j === 1) { // if finished insert TotalOSB and OSB
-          if (i > 0 && data[i-1][j-1] > 0) {
-            row.push(fixedTwoDecimal(data[i][j] / data[i-1][j-1] * 100))
-          } else {
-            row.push(0)
-          }
-        }
-      } else {
-        row.push(data[i][j])
-        if( i > 0 && data[i-1][j-1] > 0) {
-          row.push(fixedTwoDecimal(data[i][j] / data[i-1][j-1] * 100))
+const getNetflow = async date => {
+  const result = {}
+  for(let count = 0; count < 13 ; count +=1) {
+    date.add(1, 'month')
+    const key = date.format('YYYYMM')
+    let row = await getNetflowByKey(key)
+    const month = {}
+    // return row of display data
+    if(row.length > 0) {
+      row = values(row[0]) 
+      row.splice(-1,1)
+      month.osb = row[1]
+      month.osbTotal = row[2]
+      month.osbPercent = `${row[3]}%`
+      const bucket = []
+      const percentBucket = []
+      for(let item = 4 ; item < row.length ; item += 1) {
+        if(item < maxBucket + 3) {
+          bucket.push(row[item])
         } else {
-          row.push(0)
+          if (row[item] === null) {
+            percentBucket.push('N/A')
+          } else {
+            percentBucket.push(`${row[item]}%`)
+          }     
         }
       }
-      j += 1
+      month.bucket = bucket
+      month.percentBucket = percentBucket
+    } else {
+      month.osb = 'No Data'
+      month.osbTotal = 'No Data'
+      month.osbPercent = 'N/A'
+      month.bucket = new Array(maxBucket).fill(0)
+      month.percentBucket = new Array(maxBucket).fill('N/A')
     }
-    result.push(row)
-    i += 1
+    result[key] = month
   }
   return result
 }
 
-const riskNetflow = async date => {
-  const result = []
-  const rawData = []
+const updateNetflow = async date => {
+  const result = await netflowByDate(date)
+  for(let ref in result) {
+    await upsertNetflow(ref, result[ref])
+    result[ref].osbPercent = result[ref].osbPercent === null? 
+    'N/A' : `${result[ref].osbPercent}%`
+    result[ref].percentBucket = result[ref].percentBucket.map(b => {
+      const display = b === null ? 'N/A' : `${b}%`
+      return display
+    })
+  }
+  return result
+}
+
+const netflowByDate = async date => {
+  const result = {}
+  const displayDate = []
+  let lastTotal = 0
   // count variable
-  let countMonth = 0
-  let maxLength = 0
-  let count = 0
-  while(countMonth < 13) { // while loop until 13 month
-    let totalOSB = 0
-    let OSB = 0
+  for(let month = 0 ; month < 14 ; month += 1) {
+    let osbTotal = 0
+    let osb = 0
     let bucket = new Array(maxBucket).fill(0) // not count b0
+    const key = date.format('YYYYMM')
     // build time gap
     let start = date.format("YYYY-MM-DD HH:mm:ss")
     let end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
     //query Transaction and make unique by loan_id
     const trans = uniqBy(await getTransactionByDate(start, end), 'loan_id')
-    maxLength = trans.length
-    let countTran = 0
     // summary data by one transaction
-    while(countTran < maxLength) {
-      let temp = 0
-      // OSB calculate
-      propsNumber.map(prop => {
-        temp += trans[countTran][`${prop}`]
-        return prop
+    await Promise.all(
+      trans.map(async tran => {
+        // osb calculate
+        const loan = await loanById(tran.loan_id)
+        const duration = getNumberOfDays(tran.trans_date, date.toDate())
+        const newInterest = loan[0].daily_int * duration
+        const temp = tran.cf_principal + tran.cf_interest + tran.cf_fee + newInterest
+        // bucket calculate
+        for(let b = 0 ; b < maxBucket ; b +=1) {
+          bucket[b] += tran[`b${b + 1}`] // not include b0
+          osbTotal += tran[`b${b + 1}`]
+        }
+        osb += temp
+        osbTotal += temp
+        return tran
       })
-      // bucket calculate
-      while(count < bucket.length) {
-        bucket[count] += trans[countTran][`b${count + 1}`] // not include b0
-        totalOSB += trans[countTran][`b${count + 1}`]
-        count += 1
+    )
+    osb = fixedTwoDecimal(reConvertDecimal(osb))
+    osbTotal = fixedTwoDecimal(reConvertDecimal(osbTotal))
+    const firstBucket = bucket[0] === 0 ? 
+    null : fixedTwoDecimal(osb / bucket[0] * 100)
+    const percentBucket = [firstBucket]
+    for(let b = 1 ; b < maxBucket ; b+= 1 ) {
+      if(b === 1) {
+        bucket[b-1] = fixedTwoDecimal(reConvertDecimal(bucket[b-1]))
       }
-      count = 0
-      OSB += temp
-      totalOSB += temp
-      countTran +=1
+      if(bucket[b] === 0) {
+        percentBucket.push(null)
+      }else {
+        bucket[b] = fixedTwoDecimal(reConvertDecimal(bucket[b]))
+        percentBucket.push(
+          fixedTwoDecimal(bucket[b] / bucket[b-1] * 100)
+        )
+      }
     }
     // push data to result
-    const arr = [reConvertDecimal(totalOSB),reConvertDecimal(OSB)]
-    maxLength = bucket.length
-    count = 0
-    while(count < maxLength)
-    {
-      arr.push(reConvertDecimal(bucket[count]))
-      count+=1
+    if(month > 0) {
+      result[key] = {}
+      result[key].osb = osb
+      result[key].osbTotal = osbTotal
+      result[key].osbPercent = osb === 0? 
+      null : fixedTwoDecimal(lastTotal / osb * 100)
+      result[key].bucket = bucket
+      result[key].percentBucket = percentBucket
     }
-    count = 0
-    rawData.push(arr)
-    countMonth+=1
+    lastTotal = osbTotal
   }
-  return await insertPercent(rawData)
+  return result
+}
+
+const getNetflowByKey = async key => {
+  return new Promise(function(resolve, reject) {
+    connection.query(
+      `SELECT * FROM Netflow WHERE ref = ?`,
+      [key],
+      function(err, rows, fields) {
+        if(!err){
+          resolve(rows)
+        } else {
+          reject(err)
+        }
+      }
+    )
+  })
+}
+
+const upsertNetflow = async (ref, data) => {
+  let row = [data.osb, data.osbTotal, data.osbPercent]
+  row = row.concat(data.bucket)
+  row = row.concat(data.percentBucket)
+  row.push(ref)
+  let name = ''
+  let value = ''
+  let update = ''
+  for(let count = 0 ; count < row.length ; count ++) {
+    name = name.concat(`${netflowModel[count]}, `)
+    value = value.concat(`${connection.escape(row[count])}, `)
+    update = update.concat(`${netflowModel[count]}=${connection.escape(row[count])}, `)
+  }
+  name = name.slice(0, name.length-2)
+  value = value.slice(0, value.length-2)
+  update = update.slice(0, update.length-2)
+  connection.query(`INSERT INTO Netflow (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
+  function (err, result) {
+    if (err) throw err;
+  })
 }
 
 export default router

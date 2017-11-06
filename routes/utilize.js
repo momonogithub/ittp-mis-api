@@ -1,7 +1,7 @@
 import { uniqBy, groupBy, values, keys } from 'lodash'
 import { maxBucket, startDate, NPL } from '../setting'
 
-export const reConvertDecimal = data => Math.ceil(data / 10000)
+export const reConvertDecimal = data => data / 10000
 export const fixedTwoDecimal = data => Math.ceil(data * 100) / 100
 
 export const getMultiLoans = async loans => { // count customer with multiple loan
@@ -30,12 +30,12 @@ export const calculateLoans = async (loans) => {
   })
   // percentage check not 0
   if(totalLoan !== 0) {
-    averageSize = reConvertDecimal(totalSize / totalLoan)
+    averageSize = fixedTwoDecimal(reConvertDecimal(totalSize / totalLoan))
     averageInterest = fixedTwoDecimal(interest / totalLoan)
   }
   // return value
   result.push( 
-    totalLoan, reConvertDecimal(totalSize), 
+    totalLoan, fixedTwoDecimal(reConvertDecimal(totalSize)), 
     averageSize, averageInterest
   )
   return result
@@ -112,7 +112,8 @@ export const calculateTrans = async trans => {
 
   result.push(
     closed, nonStarter, bucketSize, bucketCount, active, count1To3, size1To3,
-    count1To6, size1To6, countNPL, NPLSize, reConvertDecimal(totalDelinquent),
+    count1To6, size1To6, countNPL, NPLSize, 
+    fixedTwoDecimal(reConvertDecimal(totalDelinquent)),
     countDelinquent, delinquentRate1To3, delinquentRate1To6, NPLRate,
   )
   return result
@@ -124,5 +125,20 @@ export const summaryPayment = async trans => {
     payment += reConvertDecimal(tran.cash_in)
     return tran
   })
-  return payment
+  return fixedTwoDecimal(payment)
+}
+
+export const getDateWithoutTime = date =>
+  new Date(date.getFullYear(), date.getMonth(), date.getDate())
+
+export const getNumberOfDays = (firstDate, lastDate) => {
+  // Input validate
+  if (!(firstDate instanceof Date)) throw new TypeError('firstDate must be Date.')
+  if (!(lastDate instanceof Date)) throw new TypeError('lastDate must be Date.')
+  // Adjust time
+  const first = getDateWithoutTime(firstDate)
+  const last = getDateWithoutTime(lastDate)
+  // Calculate
+  const diffDays = Math.abs(last.getTime() - first.getTime())
+  return Math.ceil(diffDays / (1000 * 3600 * 24))
 }

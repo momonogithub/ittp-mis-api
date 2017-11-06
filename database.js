@@ -1,6 +1,7 @@
 import mysql from 'mysql'
 import { portTotalModel, portTotalOption } from './routes/model/portTotal'
 import { portSummaryModel, portSummaryOption } from './routes/model/portSummary'
+import { netflowModel, netflowOption } from './routes/model/netflow'
 
 const connection = mysql.createConnection({
   host     : 'localhost',
@@ -12,13 +13,17 @@ const connection = mysql.createConnection({
 
 connection.connect(async function(err){
   if(!err) {
-    let sql = await checkExistTable('ittpdev', 'PortTotal')
+    let sql = await checkExistTable('ittpdev', 'PortSummary')
+    if(!(sql.length > 0)) {
+      await createTable('PortSummary', portSummaryModel, portSummaryOption)
+    }
+    sql = await checkExistTable('ittpdev', 'PortTotal')
     if(!(sql.length > 0)) {
       await createTable('PortTotal', portTotalModel, portTotalOption)
     }
-    sql = await checkExistTable('ittpdev', 'PortSummary')
+    sql = await checkExistTable('ittpdev', 'Netflow')
     if(!(sql.length > 0)) {
-      await createTable('PortSummary', portSummaryModel, portSummaryOption)
+      await createTable('Netflow', netflowModel, netflowOption)
     }
     console.log('Connection Successful')
   } else {

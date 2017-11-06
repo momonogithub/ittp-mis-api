@@ -27,7 +27,6 @@ router.get("/getPortTotal/:month/:year", async function(req, res){
   } catch(err) {
     res.status(500).send(err)
   }
-
 })
 
 router.get("/updatePortTotal/:month/:year", async function(req, res){
