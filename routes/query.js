@@ -18,6 +18,23 @@ export const getTransactionByDate = async (start, end) => {
   })
 }
 
+export const countLoanOpenByDate = async (start, end) => {
+  return new Promise(function(resolve, reject) {
+    connection.query(
+      `SELECT * FROM Transaction 
+        WHERE trans_date >= ? AND trans_date < ? AND trc = 'LO'`,
+      [start, end],
+      function(err, rows, fields) {
+        if(!err){
+          resolve(rows.length)
+        } else {
+          reject(err)
+        }
+      }
+    )
+  })
+}
+
 export const appByDate = async (start, end) => {
   return new Promise(function(resolve, reject) {
     connection.query(

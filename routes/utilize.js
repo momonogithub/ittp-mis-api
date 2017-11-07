@@ -43,16 +43,13 @@ export const calculateLoans = async (loans) => {
 
 export const calculateTrans = async trans => {
   const result = []
-  let closed = 0
   let nonStarter = 0
   let active = 0
   let bucketSize = new Array(maxBucket).fill(0)
   let bucketCount = new Array(maxBucket).fill(0)
   let count
   trans.map(tran => {
-    if(tran.trc === 'PO') {
-      closed += 1  
-    }else if (tran.trc === 'LO' ) {
+    if (tran.trc === 'LO' ) {
       active += 1
       nonStarter += 1
     }else {
@@ -111,7 +108,7 @@ export const calculateTrans = async trans => {
   }
 
   result.push(
-    closed, nonStarter, bucketSize, bucketCount, active, count1To3, size1To3,
+    nonStarter, bucketSize, bucketCount, active, count1To3, size1To3,
     count1To6, size1To6, countNPL, NPLSize, 
     fixedTwoDecimal(reConvertDecimal(totalDelinquent)),
     countDelinquent, delinquentRate1To3, delinquentRate1To6, NPLRate,

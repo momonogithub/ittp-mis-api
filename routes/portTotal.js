@@ -7,7 +7,8 @@ import { portTotalModel } from './model/portTotal'
 import { 
   getTransactionByDate,
   loanByDate,
-  appByDate } from './query'
+  appByDate,
+  countLoanOpenByDate } from './query'
 import { 
   reConvertDecimal,
   getMultiLoans,
@@ -108,10 +109,11 @@ const portTotalByDate = async date => {
   let start = date.format("YYYY/MM/DD")
   let end = date.add(1, 'month').format("YYYY/MM/DD")
   // query loan, apps before selected date
-  let [loans, apps, trans] = await Promise.all([
+  let [loans, apps, trans, loanOpen] = await Promise.all([
     loanByDate(startDate, start),
     appByDate(startDate, start),
-    getTransactionByDate(startDate, start)
+    getTransactionByDate(startDate, start),
+    countLoanOpenByDate(start, end)
   ])
   while(month < 14) {
     // query loan, apps, trans on selected date
@@ -146,28 +148,28 @@ const portTotalByDate = async date => {
       growthRate = fixedTwoDecimal((loanMonth - lastMonthAcc) / lastMonthAcc * 100)
     }
     if(calLoan[1] !== 0) {
-      debtRate = fixedTwoDecimal(sumTrans[11] / calLoan[1] * 100)
+      debtRate = fixedTwoDecimal(sumTrans[10] / calLoan[1] * 100)
     }
-    if(sumTrans[11] !== 0) {
-      delinquentRate1To3 = fixedTwoDecimal(sumTrans[6] / sumTrans[11] * 100)
-      delinquentRate1To6 = fixedTwoDecimal(sumTrans[8] / sumTrans[11] * 100)
-      NPLRate = fixedTwoDecimal(sumTrans[10] / sumTrans[11] * 100)
+    if(sumTrans[10] !== 0) {
+      delinquentRate1To3 = fixedTwoDecimal(sumTrans[5] / sumTrans[10] * 100)
+      delinquentRate1To6 = fixedTwoDecimal(sumTrans[7] / sumTrans[10] * 100)
+      NPLRate = fixedTwoDecimal(sumTrans[9] / sumTrans[10] * 100)
     }
     if(lastNPL !== 0) {
-      recovery = fixedTwoDecimal((lastNPL - sumTrans[10]) / lastNPL * 100)
+      recovery = fixedTwoDecimal((lastNPL - sumTrans[9]) / lastNPL * 100)
     }
     if(month !== 0) { // not count first month
       result.push([
-        calLoan[0], totalApps, multiLoan, loanMonth, sumTrans[0],
-        sumTrans[12], sumTrans[9], sumTrans[1], calLoan[1],
-        reConvertDecimal(sumTrans[8]), totalPayment,
-        sumTrans[11], calLoan[2],
-        calLoan[3], growthRate, debtRate, sumTrans[13],
-        sumTrans[14], sumTrans[15], recovery, key,
+        calLoan[0], totalApps, multiLoan, loanMonth, loanOpen,
+        sumTrans[11], sumTrans[8], sumTrans[0], calLoan[1],
+        reConvertDecimal(sumTrans[7]), totalPayment,
+        sumTrans[10], calLoan[2],
+        calLoan[3], growthRate, debtRate, sumTrans[12],
+        sumTrans[13], sumTrans[14], recovery, key,
       ])
     }
     lastMonthAcc = loanMonth
-    lastNPL = sumTrans[10]
+    lastNPL = sumTrans[9]
     key = date.format('YYYYMM')
     start = date.format("YYYY/MM/DD")
     end = date.add(1, 'month').format("YYYY/MM/DD")

@@ -28,6 +28,7 @@ router.get("/updatePortSummary/:month/:year", async function(req, res){
   const { year, month} = req.params // input param
   const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
   const result = await updatePortSummary(date)
+  console.log('update')
   res.send(result)
 })
 
@@ -137,9 +138,20 @@ const portSummaryByDate = async date => {
       })
       const transGroup = []
       const allTranGroup = []
+      let loanOpen = 0
       loanGroup[count].map(loan => {
         const mapTran = monthlyTrans.filter(tran => tran.loan_id === loan.loan_id)
-        const mapAllTran = trans.filter(tran => tran.loan_id === loan.loan_id)
+        const mapAllTran = trans.filter(tran => {
+          if(tran.loan_id === loan.loan_id) {
+            const time = moment(tran.trans_date)
+            if(tran.trc === 'LO' && time.isBetween(start, end)) {
+              loanOpen += 1
+            }
+            return true
+          } else {
+            return false
+          }
+        })
         if(mapTran.length > 0) {
           transGroup.push(mapTran[0])
         }
@@ -159,22 +171,22 @@ const portSummaryByDate = async date => {
       const summary = `${productGroup[count]}${ref}`
       let mtdRate = null
       if (calLoans[0] > 0) {
-        mtdRate = fixedTwoDecimal(sumTrans[0] / calLoans[0])
+        mtdRate = fixedTwoDecimal(loanOpen / calLoans[0])
       }
       if(i === 1 ) {
         let recovery = null
         if( lastNPL[count] > 0) {
-          recovery = fixedTwoDecimal((lastNPL[count] - sumTrans[10]) / lastNPL[count]  * 100)
+          recovery = fixedTwoDecimal((lastNPL[count] - sumTrans[9]) / lastNPL[count]  * 100)
         }
         result.push([
-          calLoans[0], sumTrans[4], calLoans[2], calLoans[3],
+          calLoans[0], sumTrans[3], calLoans[2], calLoans[3],
           calLoans[1], multiLoan, totalPayment, calLoansMonth[0],
-          calLoansMonth[1], calLoansMonth[2], calLoansMonth[3], sumTrans[0],
-          mtdRate, sumTrans[7], sumTrans[9], sumTrans[13], 
-          sumTrans[14], sumTrans[15], recovery, summary
+          calLoansMonth[1], calLoansMonth[2], calLoansMonth[3], loanOpen,
+          mtdRate, sumTrans[6], sumTrans[8], sumTrans[12], 
+          sumTrans[13], sumTrans[14], recovery, summary
         ])
       } else {
-        lastNPL[count] = sumTrans[10]
+        lastNPL[count] = sumTrans[9]
       }
     }
     start = date.format("YYYY-MM-DD")

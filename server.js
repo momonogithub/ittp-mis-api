@@ -1,3 +1,4 @@
+import demographic from './routes/demographic'
 import channel from './routes/channel'
 import portTotal from './routes/portTotal'
 import portSummary from './routes/portSummary'
@@ -13,6 +14,7 @@ const app = express()
 
 app.use(cors())
 app.use('/channel', channel)
+app.use('/demographic', demographic)
 app.use('/portTotal',  portTotal)
 app.use('/portSummary',  portSummary)
 app.use('/netflow', netflow)

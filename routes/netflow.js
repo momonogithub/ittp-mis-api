@@ -121,8 +121,8 @@ const netflowByDate = async date => {
     )
     osb = fixedTwoDecimal(reConvertDecimal(osb))
     osbTotal = fixedTwoDecimal(reConvertDecimal(osbTotal))
-    const firstBucket = bucket[0] === 0 ? 
-    null : fixedTwoDecimal(osb / bucket[0] * 100)
+    const firstBucket = osb === 0 ? 
+    null : fixedTwoDecimal(reConvertDecimal(bucket[0]) / osb * 100)
     const percentBucket = [firstBucket]
     for(let b = 1 ; b < maxBucket ; b+= 1 ) {
       if(b === 1) {
@@ -143,7 +143,7 @@ const netflowByDate = async date => {
       result[key].osb = osb
       result[key].osbTotal = osbTotal
       result[key].osbPercent = osb === 0? 
-      null : fixedTwoDecimal(lastTotal / osb * 100)
+      null : fixedTwoDecimal(osb / lastTotal * 100)
       result[key].bucket = bucket
       result[key].percentBucket = percentBucket
     }
