@@ -1,7 +1,7 @@
 import { uniqBy, groupBy, values, keys } from 'lodash'
 import { maxBucket, startDate, NPL } from '../setting'
 
-export const reConvertDecimal = data => data / 10000
+export const reConvertDecimal = data => fixedTwoDecimal(data / 10000)
 export const fixedTwoDecimal = data => Math.ceil(data * 100) / 100
 
 export const getMultiLoans = async loans => { // count customer with multiple loan
@@ -30,12 +30,12 @@ export const calculateLoans = async (loans) => {
   })
   // percentage check not 0
   if(totalLoan !== 0) {
-    averageSize = fixedTwoDecimal(reConvertDecimal(totalSize / totalLoan))
+    averageSize = reConvertDecimal(totalSize / totalLoan)
     averageInterest = fixedTwoDecimal(interest / totalLoan)
   }
   // return value
   result.push( 
-    totalLoan, fixedTwoDecimal(reConvertDecimal(totalSize)), 
+    totalLoan, reConvertDecimal(totalSize), 
     averageSize, averageInterest
   )
   return result
@@ -110,7 +110,7 @@ export const calculateTrans = async trans => {
   result.push(
     nonStarter, bucketSize, bucketCount, active, count1To3, size1To3,
     count1To6, size1To6, countNPL, NPLSize, 
-    fixedTwoDecimal(reConvertDecimal(totalDelinquent)),
+    reConvertDecimal(totalDelinquent),
     countDelinquent, delinquentRate1To3, delinquentRate1To6, NPLRate,
   )
   return result
@@ -119,10 +119,10 @@ export const calculateTrans = async trans => {
 export const summaryPayment = async trans => {
   let payment = 0
   trans.map(tran => {
-    payment += reConvertDecimal(tran.cash_in)
+    payment += tran.cash_in
     return tran
   })
-  return fixedTwoDecimal(payment)
+  return reConvertDecimal(payment)
 }
 
 export const getDateWithoutTime = date =>

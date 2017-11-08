@@ -1,53 +1,84 @@
 import express from 'express'
 import connection from '../database'
 import moment from 'moment'
-import { startDate } from '../setting'
-import { appByDate } from './query'
+import { demographicGroup }  from './demographicGroup'
+import { startDate, maxBucket } from '../setting'
+import { appByDate, loanById, transactionByLoan } from './query'
 import { uniqBy, groupBy, values, keys } from 'lodash'
+import { reConvertDecimal, fixedTwoDecimal } from './utilize'
 
 const router = express.Router()
 
 router.get("/getDemographic/:month/:year", async function(req, res){
   const { year, month} = req.params // input param
   const date = moment(`${year}${month}`, 'YYYYM')
+  const start = date.format("YYYY-MM-DD HH:mm:ss")
+  const end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
+  const applicationsAll = await appByDate(startDate, start)
   try {
-    const [month13] = await Promise.all([
-      demographicMonth(date)
-    ])
-    const result = {
-      month13 : month13,
-      gender : 0,
-      loanSize : 0,
-      income : 0,
-      age: 0,
-      region: 0,
-      marital: 0,
-      channel: 0,
-      education: 0,
-      business: 0,
-      job: 0,
-      employment: 0
+    const applicationGroup = await demographicGroup(applicationsAll, date)
+    for(let demo in applicationGroup) {
+      for(let group  in applicationGroup[demo]) {
+        applicationGroup[demo][group] = 
+          await getDemographicByApp(applicationGroup[demo][group], start, end)
+      }
     }
-    res.status(200).send(result)
+    res.status(200).send(applicationGroup)
   } catch(err) {
     res.status(500).send(err)
   }
 })
 
-const demographicMonth = async date => {
-  const applications = 0
-  return getDemographicByApp(applications)
-}
-
-const getDemographicByApp = async applications => {
+const getDemographicByApp = async (applications, start, end) => {
+  let loanSize = 0
+  let int = 0
+  let newAccount = 0
+  let installLoan = 0
+  let loanTerm = 0
+  let osb = 0
+  let delinquent = 0
+  let npl = 0
+  await Promise.all(
+    applications.map(async app => {
+      let [loan, trans] = await Promise.all(
+        loanById(app.loan_id),
+        transactionByLoan(app.loan_id)
+      ) 
+      loan = values(loan[0])
+      loanSize += loan.credit_limit
+      if(loan.installment_term !== 0) {
+        loanTerm += loan.installment_term
+        installLoan += 1
+      }
+      const time = moment(trans[0].trans_date)
+      if(time.isBetween(start, end)) {
+        newAccount += 1
+      }
+      const latestTran = trans[trans.length - 1]
+      const duration = getNumberOfDays(latestTran.trans_date, end.toDate())
+      const newInterest = loan.daily_int * duration
+      osb += latestTran.cf_principal + latestTran.cf_interest + latestTran.cf_fee + newInterest
+      if(latestTran[`b1`] !== 0 ) {
+        delinquent += 1
+      }
+      if(latestTran[`b${maxBucket - 1}`] !== 0) {
+        npl += 1
+      }
+      return app
+    })
+  )
   return {
-    newAccount : 0,
-    loanSize: 0,
-    averageInt: 0,
-    averageLoanTerm: 0,
-    osb: 0,
-    delinquentRate: 0,
-    nplRate: 0
+    newAccount : newAccount,
+    loanSize: reConvertDecimal(loanSize),
+    averageInt: applications.length > 0 ? 
+      fixedTwoDecimal(int / applications.length) : 'N/A',
+    averageLoanTerm: installLoan > 0 ?
+      fixedTwoDecimal(loanTerm / installLoan) : 'N/A',
+    osb: reConvertDecimal(osb),
+    delinquentRate: applications.length > 0 ? 
+      fixedTwoDecimal(delinquent / applications.length) : 'N/A',
+    nplRate: applications.length > 0 ? 
+      fixedTwoDecimal(npl / applications.length) : 'N/A'
   }
 }
 

@@ -3,7 +3,7 @@ import connection from '../database'
 import moment from 'moment'
 import { uniqBy, groupBy, values, keys } from 'lodash'
 import { startDate } from '../setting'
-import { getTransactionByDate, loanByDate, appByDate } from './query'
+import { transactionByDate, loanByDate, appByDate } from './query'
 import { queryProductName } from './product'
 import { portSummaryModel } from './model/portSummary'
 import { 
@@ -49,7 +49,7 @@ const getPortSummary = async date => {
         // skip id at first index, key as last index
         if(row[count] === null) { // percent indexs are 12 or more
           month[`${portSummaryModel[count - 1]}`] ='N/A'
-        } else if (count > 16) {
+        } else if (count > 15) {
           month[`${portSummaryModel[count - 1]}`] = `${row[count]}%`
         } else {
           month[`${portSummaryModel[count - 1]}`] = row[count]
@@ -100,7 +100,7 @@ const portSummaryByDate = async date => {
   let end = date.add(1, 'month').format("YYYY-MM-DD")
   let [loans, trans, products] = await Promise.all([
     loanByDate(startDate, start),
-    getTransactionByDate(startDate, start),
+    transactionByDate(startDate, start),
     queryProductName()
   ])
   let lastNPL = new Array(Object.keys(products).length).fill(0)
@@ -108,7 +108,7 @@ const portSummaryByDate = async date => {
     // loop only 2 iterative
     let [monthlyLoans, monthlyTrans] = await Promise.all([
       loanByDate(start, end),
-      getTransactionByDate(start, end)
+      transactionByDate(start, end)
     ])
     loans = loans.concat(monthlyLoans)
     trans = trans.concat(monthlyTrans)

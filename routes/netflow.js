@@ -3,7 +3,7 @@ import connection from '../database'
 import moment from 'moment'
 import { uniqBy, values } from 'lodash'
 import { reConvertDecimal, fixedTwoDecimal, getNumberOfDays } from './utilize'
-import { getTransactionByDate, loanById } from './query'
+import { transactionByDate, loanById } from './query'
 import { maxBucket, startDate, NPL } from '../setting'
 import { netflowModel } from './model/netflow'
 
@@ -100,7 +100,7 @@ const netflowByDate = async date => {
     let start = date.format("YYYY-MM-DD HH:mm:ss")
     let end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
     //query Transaction and make unique by loan_id
-    const trans = uniqBy(await getTransactionByDate(start, end), 'loan_id')
+    const trans = uniqBy(await transactionByDate(start, end), 'loan_id')
     // summary data by one transaction
     await Promise.all(
       trans.map(async tran => {
@@ -119,19 +119,19 @@ const netflowByDate = async date => {
         return tran
       })
     )
-    osb = fixedTwoDecimal(reConvertDecimal(osb))
-    osbTotal = fixedTwoDecimal(reConvertDecimal(osbTotal))
+    osb = reConvertDecimal(osb)
+    osbTotal = reConvertDecimal(osbTotal)
     const firstBucket = osb === 0 ? 
     null : fixedTwoDecimal(reConvertDecimal(bucket[0]) / osb * 100)
     const percentBucket = [firstBucket]
     for(let b = 1 ; b < maxBucket ; b+= 1 ) {
       if(b === 1) {
-        bucket[b-1] = fixedTwoDecimal(reConvertDecimal(bucket[b-1]))
+        bucket[b-1] = reConvertDecimal(bucket[b-1])
       }
       if(bucket[b] === 0) {
         percentBucket.push(null)
       }else {
-        bucket[b] = fixedTwoDecimal(reConvertDecimal(bucket[b]))
+        bucket[b] = reConvertDecimal(bucket[b])
         percentBucket.push(
           fixedTwoDecimal(bucket[b] / bucket[b-1] * 100)
         )
@@ -142,7 +142,7 @@ const netflowByDate = async date => {
       result[key] = {}
       result[key].osb = osb
       result[key].osbTotal = osbTotal
-      result[key].osbPercent = osb === 0? 
+      result[key].osbPercent = lastTotal === 0? 
       null : fixedTwoDecimal(osb / lastTotal * 100)
       result[key].bucket = bucket
       result[key].percentBucket = percentBucket

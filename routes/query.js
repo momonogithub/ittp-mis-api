@@ -1,12 +1,29 @@
 import connection from '../database'
 
-export const getTransactionByDate = async (start, end) => {
+export const transactionByDate = async (start, end) => {
   return new Promise(function(resolve, reject) {
     connection.query(
       `SELECT * FROM Transaction 
         WHERE trans_date >= ? AND trans_date < ?
         ORDER BY id DESC`,
       [start, end],
+      function(err, rows, fields) {
+        if(!err){
+          resolve(rows)
+        } else {
+          reject(err)
+        }
+      }
+    )
+  })
+}
+
+export const transactionByLoan = async (loanId) => {
+  return new Promise(function(resolve, reject) {
+    connection.query(
+      `SELECT * FROM Transaction 
+        WHERE loan_id = ? ORDER BY id ASC`,
+      [loanId],
       function(err, rows, fields) {
         if(!err){
           resolve(rows)
@@ -72,6 +89,23 @@ export const loanByDate = async (start, end) => {
 }
 
 export const loanById = async (loanId) => {
+  return new Promise(function(resolve, reject) {
+    connection.query(
+      `SELECT * FROM Loan
+        WHERE loan_id = ? AND status = 'active'`,
+      [loanId],
+      function(err, rows, fields) {
+        if(!err){
+          resolve(rows)
+        } else {
+          reject(err)
+        }
+      }
+    )
+  })
+}
+
+export const loanByApp = async (loanId) => {
   return new Promise(function(resolve, reject) {
     connection.query(
       `SELECT * FROM Loan

@@ -5,7 +5,7 @@ import { uniqBy, groupBy, values, keys } from 'lodash'
 import { startDate, NPL } from '../setting'
 import { portTotalModel } from './model/portTotal'
 import { 
-  getTransactionByDate,
+  transactionByDate,
   loanByDate,
   appByDate,
   countLoanOpenByDate } from './query'
@@ -112,7 +112,7 @@ const portTotalByDate = async date => {
   let [loans, apps, trans, loanOpen] = await Promise.all([
     loanByDate(startDate, start),
     appByDate(startDate, start),
-    getTransactionByDate(startDate, start),
+    transactionByDate(startDate, start),
     countLoanOpenByDate(start, end)
   ])
   while(month < 14) {
@@ -120,7 +120,7 @@ const portTotalByDate = async date => {
     let [queryLoans, queryApps, queryTrans] = await Promise.all([
       loanByDate(start, end),
       appByDate(start, end),
-      getTransactionByDate(start, end)
+      transactionByDate(start, end)
     ])
     apps = apps.concat(queryApps)
     loans = loans.concat(queryLoans)
