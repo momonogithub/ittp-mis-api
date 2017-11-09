@@ -2,7 +2,6 @@ import { appByDate } from './query'
 import { groupBy } from 'lodash'
 
 export const demographicGroup = async (applications, date) => {
-  console.log(applications.length)
   //Gender
   const gender1 = 'Male'
   const gender2 = 'Female'
@@ -45,9 +44,10 @@ export const demographicGroup = async (applications, date) => {
   const region1 = 'BKK'
   const region2 = 'Central'
   const region3 = 'East'
-  const region4 = 'Northest'
+  const region4 = 'Northeast'
   const region5 = 'South'
   const region6 = 'North'
+  const region7 = 'West'
 
   //marital status
   const marital1 = 'โสด'
@@ -149,6 +149,7 @@ export const demographicGroup = async (applications, date) => {
     [region4] : [],
     [region5] : [],
     [region6] : [],
+    [region7] : []
   }
   const marital = {
     [marital1] : [],

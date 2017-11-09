@@ -9,6 +9,22 @@ import { reConvertDecimal, fixedTwoDecimal } from './utilize'
 
 const router = express.Router()
 
+const demoList = [
+  'Total',
+  'Month',
+  'Gender',
+  'LoanSize',
+  'Income',
+  'Age',
+  'Region',
+  'Marital',
+  'Channel',
+  'Education',
+  'Business',
+  'Job',
+  'Employment',
+]
+
 router.get("/getDemographic/:month/:year", async function(req, res){
   const { year, month} = req.params // input param
   const date = moment(`${year}${month}`, 'YYYYM')
@@ -24,6 +40,22 @@ router.get("/getDemographic/:month/:year", async function(req, res){
       }
     }
     res.status(200).send(applicationGroup)
+  } catch(err) {
+    console.log(err)
+    res.status(500).send(err)
+  }
+})
+
+router.get("/getDemoList", async function(req, res){
+  try{
+    const nameList = {}
+    demoList.map(demo => {
+      nameList[`${demo}`] = {
+        status: false
+      }
+      return demo
+    })
+    res.status(200).send(nameList)
   } catch(err) {
     res.status(500).send(err)
   }
