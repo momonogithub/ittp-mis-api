@@ -86,10 +86,9 @@ const appByCitizenId = async citizenId => {
 const mapAppWithLoan = async (mapData, appId) => {
   let update = ''
   for(let item in mapData) {
-    update = update.concat(`${item}='${mapData[item]}', `)
+    update = update.concat(`${item}=${connection.escape(mapData[item])}, `)
   }
   update = update.slice(0, update.length-2)
-  console.log(update)
   connection.query(`UPDATE Applications SET ${update} WHERE id = ?`,
   [appId],
   function (err, result) {
