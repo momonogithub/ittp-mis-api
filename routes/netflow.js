@@ -11,7 +11,7 @@ const router = express.Router()
 
 router.get("/getNetflow/:month/:year", async function(req, res){
   const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM').subtract(13, 'month')
+  const date = moment(`${year}${month}`, 'YYYYM')
   try {
     const result = await getNetflow(date)
     res.status(200).send(result)
@@ -22,20 +22,21 @@ router.get("/getNetflow/:month/:year", async function(req, res){
 
 router.get("/updateNetflow/:month/:year",async function(req, res){
   const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM').subtract(13, 'month')
+  const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
   try {
-    const result = await updateNetflow(date)
-    res.status(200).send(result)
+    await updateNetflow(date)
+    res.status(200).send(await getNetflow(date.subtract(1, 'month')))
   } catch(err) {
     res.status(500).send(err)
   }
 })
 
 const getNetflow = async date => {
+  const queryDate = date.subtract(13, 'month')
   const result = {}
   for(let count = 0; count < 13 ; count +=1) {
-    date.add(1, 'month')
-    const key = date.format('YYYYMM')
+    queryDate.add(1, 'month')
+    const key = queryDate.format('YYYYMM')
     let row = await getNetflowByKey(key)
     const month = {}
     // return row of display data
@@ -91,7 +92,7 @@ const netflowByDate = async date => {
   const displayDate = []
   let lastTotal = 0
   // count variable
-  for(let month = 0 ; month < 14 ; month += 1) {
+  for(let month = 0 ; month < 2 ; month += 1) {
     let osbTotal = 0
     let osb = 0
     let bucket = new Array(maxBucket).fill(0) // not count b0

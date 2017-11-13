@@ -226,7 +226,7 @@ const demographicMonth = async date => {
   date.subtract(13, 'month')
   for(let count = 0 ; count < 13 ; count += 1) {
     const start = date.format("YYYY-MM-DD HH:mm:ss")
-    const key = date.format('YYYYMM')
+    const key = date.format('YYYY/MM')
     const end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
     result[key] = await appByDate(start, end)
   }

@@ -17,16 +17,6 @@ router.get("/:month/:year", async function(req, res){
 const getChennel = async date => {
   const result = {}
   for(let month = 0 ; month < 13 ; month += 1) {
-    const branch = {
-      Application : 0,
-      Approved : 0,
-      Percent : 'N/A'
-    }
-    const sale = {
-      Application : 0,
-      Approved : 0,
-      Percent : 'N/A'
-    }
     let key = date.format("YYYYMM")
     const start = date.format("YYYY-MM-DD HH:mm:ss")
     const end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
@@ -49,20 +39,8 @@ const getChennel = async date => {
         Approved: approvedChannel,
         Percent: `${Math.ceil(approvedChannel/appChannel * 10000)/100}%`,
       }
-      if(item[0] === 'B' || item === 'HQ') {
-        branch.Application += appChannel
-        branch.Approved += approvedChannel
-        branch.Percent = `${Math.ceil(branch.Approved/branch.Application * 10000)/100}%`
-        result[key] = Object.assign(result[key], { [item]: branchValue })
-      } else {
-        sale.Application += appChannel
-        sale.Approved += approvedChannel
-        sale.Percent = `${Math.ceil(sale.Approved/sale.Application * 10000)/100}%`
-        result[key] = Object.assign(result[key], { [item]: branchValue })
-      }
+      result[key] = Object.assign(result[key], { [item]: branchValue })
     }
-    result[key].Branch = branch
-    result[key].Sale = sale
   }
   return result
 }

@@ -5,7 +5,6 @@ import moment from 'moment'
 const router = express.Router()
 
 router.use('/mapAppWithLoan', async function(req, res) {
-  const result = []
   try {
     const loans = await queryLoan()
     for(let i = 0 ; i < loans.length ; i += 1) {
@@ -14,6 +13,7 @@ router.use('/mapAppWithLoan', async function(req, res) {
         appByCitizenId(loans[i].citizen_id),
       ])
       const loanOpenTime = moment(loanOpen[0].trans_date).format('YYYY-MM-DD hh:mm:ss')
+      const wayCode = await randomWayCode()
       const mapping = {
         productId : loans[i].product_id,
         // fill every timestamp with Loan open Date
@@ -27,6 +27,7 @@ router.use('/mapAppWithLoan', async function(req, res) {
         waitTransferTimestamp : loanOpenTime,
         transferredTimestamp : loanOpenTime,
         transferredDate : loanOpenTime,
+        wayCode : wayCode
       }
       await mapAppWithLoan(mapping, application[0].id)
     }
@@ -96,4 +97,9 @@ const mapAppWithLoan = async (mapData, appId) => {
   })
 }
 
+const randomWayCode = async () => {
+  const choices = ['HQ', 'B0001', 'B0002', 'S0001', 'S0002']
+  const index = Math.floor(Math.random() * choices.length)
+  return choices[index]
+}
 export default router

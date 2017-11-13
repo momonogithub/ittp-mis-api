@@ -21,7 +21,7 @@ const router = express.Router()
 
 router.get("/getPortTotal/:month/:year", async function(req, res){
   const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM').subtract(13, 'month')
+  const date = moment(`${year}${month}`, 'YYYYM')
   try {
     const result = await getPortTotal(date)
     res.status(200).send(result)
@@ -33,10 +33,10 @@ router.get("/getPortTotal/:month/:year", async function(req, res){
 router.get("/updatePortTotal/:month/:year", async function(req, res){
   const result = []
   const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM').subtract(13, 'month')
+  const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
   try {
-    const portTotal = await updatePortTotal(date)
-    res.status(200).send(portTotal)
+    await updatePortTotal(date)
+    res.status(200).send(await getPortTotal(date.subtract(2, 'month')))
   } catch (err) {
     res.status(500).send(err)
   }
@@ -68,10 +68,11 @@ const updatePortTotal = async date => {
 }
 
 const getPortTotal = async date => {
+  const queryDate = date.subtract(13, 'month')
   const result = {}
   for(let count = 0; count < 13 ; count ++) {
-    date.add(1, 'month')
-    const key = date.format('YYYYMM')
+    queryDate.add(1, 'month')
+    const key = queryDate.format('YYYYMM')
     let row = await getPortTotalByKey(key)
     const month = {}
     // return row of display data
@@ -115,7 +116,7 @@ const portTotalByDate = async date => {
     transactionByDate(startDate, start),
     countLoanOpenByDate(start, end)
   ])
-  while(month < 14) {
+  while(month < 2) {
     // query loan, apps, trans on selected date
     let [queryLoans, queryApps, queryTrans] = await Promise.all([
       loanByDate(start, end),
