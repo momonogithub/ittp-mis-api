@@ -3,9 +3,9 @@ import connection from '../database'
 import moment from 'moment'
 import { demographicGroup }  from './demographicGroup'
 import { startDate, maxBucket } from '../setting'
-import { appByDate, loanById, transactionByLoan } from './query'
+import { appById, appByDate, loanByDate, transactionByDate } from './query'
 import { uniqBy, groupBy, values, keys } from 'lodash'
-import { reConvertDecimal, fixedTwoDecimal } from './utilize'
+import { reConvertDecimal, fixedTwoDecimal, getNumberOfDays } from './utilize'
 
 const router = express.Router()
 
@@ -26,20 +26,61 @@ const demoList = [
 ]
 
 router.get("/getDemographic/:month/:year", async function(req, res){
-  const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM')
-  const start = date.format("YYYY-MM-DD HH:mm:ss")
-  const end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
-  const applicationsAll = await appByDate(startDate, start)
   try {
-    const applicationGroup = await demographicGroup(applicationsAll, date)
-    for(let demo in applicationGroup) {
-      for(let group  in applicationGroup[demo]) {
-        applicationGroup[demo][group] = 
-          await getDemographicByApp(applicationGroup[demo][group], start, end)
+    console.time('demographic')
+    let datas = []
+    const { year, month} = req.params // input param
+    const demoMonth = {}
+    const date = moment(`${year}${month}`, 'YYYYM').subtract(12, 'month')
+    let start = date.format("YYYY-MM-DD HH:mm:ss")
+    let key = date.format('YYYY/MM')
+    let end = date.add(1, 'month')
+    console.time('combine data')
+    for(let i = 0 ; i < 13 ; i += 1) {
+      const monthlyDatas = []
+      const endSql = end.format("YYYY-MM-DD HH:mm:ss")
+      let loans, applications, transactions
+      if(i === 0) {
+        loans = await loanByDate(startDate, endSql)
+        applications = await appByDate(startDate, endSql)
+        transactions = await transactionByDate(startDate, endSql)
+      } else {
+        loans = await loanByDate(start, endSql)
+        applications = await appByDate(start, endSql)
+        transactions = await transactionByDate(start, endSql)
+      }
+      loans.filter(loan => loan.app_id !== 0).map(loan => {
+        const tran = transactions.filter(tran => tran.loan_id === loan.loan_id)
+        const app = applications.filter(app => app.id === loan.app_id)
+        delete loan.created_date
+        monthlyDatas.push({
+          ...app[0],
+          ...loan,
+          transaction : tran
+        })
+        return loan
+      })
+      datas = datas.concat(monthlyDatas)
+      demoMonth[key] = datas
+      start = date.format("YYYY-MM-DD HH:mm:ss")
+      key = date.format('YYYY/MM')
+      end = date.add(1, 'month')
+    }
+    
+    console.timeEnd('combine data')
+    console.time('demo')
+    let dataGroup = await demographicGroup(datas, date)
+    dataGroup.Total = { Total : datas }
+    dataGroup.Month = demoMonth
+    for(let demo in dataGroup) {
+      for(let group  in dataGroup[demo]) {
+        dataGroup[demo][group] = 
+          await getDemographic(dataGroup[demo][group], start, end)
       }
     }
-    res.status(200).send(applicationGroup)
+    console.timeEnd('demo')
+    console.timeEnd('demographic')
+    res.status(200).send(dataGroup)
   } catch(err) {
     console.log(err)
     res.status(500).send(err)
@@ -61,7 +102,7 @@ router.get("/getDemoList", async function(req, res){
   }
 })
 
-const getDemographicByApp = async (applications, start, end) => {
+const getDemographic = async (datas, start, end) => {
   let loanSize = 0
   let int = 0
   let newAccount = 0
@@ -70,47 +111,50 @@ const getDemographicByApp = async (applications, start, end) => {
   let osb = 0
   let delinquent = 0
   let npl = 0
-  await Promise.all(
-    applications.map(async app => {
-      let [loan, trans] = await Promise.all(
-        loanById(app.loan_id),
-        transactionByLoan(app.loan_id)
-      ) 
-      loan = values(loan[0])
-      loanSize += loan.credit_limit
-      if(loan.installment_term !== 0) {
-        loanTerm += loan.installment_term
-        installLoan += 1
-      }
-      const time = moment(trans[0].trans_date)
-      if(time.isBetween(start, end)) {
-        newAccount += 1
-      }
-      const latestTran = trans[trans.length - 1]
-      const duration = getNumberOfDays(latestTran.trans_date, end.toDate())
-      const newInterest = loan.daily_int * duration
-      osb += latestTran.cf_principal + latestTran.cf_interest + latestTran.cf_fee + newInterest
-      if(latestTran[`b1`] !== 0 ) {
-        delinquent += 1
-      }
-      if(latestTran[`b${maxBucket - 1}`] !== 0) {
-        npl += 1
-      }
-      return app
-    })
-  )
+  if(datas.length > 0) {
+    await Promise.all(
+      datas.map(async data => {
+        loanSize += data.credit_limit
+        int += data.int_rate
+        if(data.installment_term !== 0) {
+          loanTerm += data.installment_term
+          installLoan += 1
+        }
+        if(data['transaction'].length > 0) {
+          const time = moment(data['transaction'][data['transaction'].length - 1].trans_date)
+          if(time.isBetween(start, end)) {
+            newAccount += 1
+          }
+          const latestTran = data['transaction'][0]
+          const duration = getNumberOfDays(latestTran.trans_date, end.toDate())
+          const newInterest = data.daily_int * duration
+          osb += latestTran.cf_principal 
+              + latestTran.cf_interest 
+              + latestTran.cf_fee 
+              + newInterest
+          if(latestTran[`b1`] !== 0 ) {
+            delinquent += 1
+          }
+          if(latestTran[`b${maxBucket - 1}`] !== 0) {
+            npl += 1
+          }
+        }
+        return data
+      })
+    ) 
+  }
   return {
     newAccount : newAccount,
     loanSize: reConvertDecimal(loanSize),
-    averageInt: applications.length > 0 ? 
-      fixedTwoDecimal(int / applications.length) : 'N/A',
+    averageInt: datas.length > 0 ? 
+      fixedTwoDecimal(int / datas.length) : 'N/A',
     averageLoanTerm: installLoan > 0 ?
       fixedTwoDecimal(loanTerm / installLoan) : 'N/A',
     osb: reConvertDecimal(osb),
-    delinquentRate: applications.length > 0 ? 
-      fixedTwoDecimal(delinquent / applications.length) : 'N/A',
-    nplRate: applications.length > 0 ? 
-      fixedTwoDecimal(npl / applications.length) : 'N/A'
+    delinquentRate: datas.length > 0 ? 
+      `${fixedTwoDecimal(delinquent / datas.length)}%` : 'N/A',
+    nplRate: datas.length > 0 ? 
+      `${fixedTwoDecimal(npl / datas.length)}%` : 'N/A'
   }
 }
 

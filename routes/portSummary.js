@@ -18,18 +18,26 @@ import {
 const router = express.Router()
 
 router.get("/getPortSummary/:month/:year", async function(req, res){
-  const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM')
-  const result = await getPortSummary(date)
-  res.send(result)
+  try {
+    const { year, month} = req.params // input param
+    const date = moment(`${year}${month}`, 'YYYYM')
+    res.status(200).send(await getPortSummary(date))
+  } catch (err) {
+    res.status(500).send(err)
+  }
+
 })
 
 router.get("/updatePortSummary/:month/:year", async function(req, res){
-  const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
-  const result = await updatePortSummary(date)
-  console.log('update')
-  res.send(result)
+  try {
+    const { year, month} = req.params // input param
+    const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
+    await updatePortSummary(date)
+    console.log('update complete')
+    res.status(200).send(await getPortSummary(date.subtract(2, 'month')))
+  } catch (err) {
+    res.status(500).send(err)
+  }
 })
 
 const getPortSummary = async date => {
@@ -67,30 +75,13 @@ const getPortSummary = async date => {
 }
 
 const updatePortSummary = async date => {
-  const result = {}
   const portSummary = await portSummaryByDate(date)
-  let item = 0
   await Promise.all(
     portSummary.map(async row => {
       await upsertPortSummary(row)
-      const month = {}
-      const key = row[row.length-1]
-      row.splice(-1,1) // delete key
-      for(let count = 0; count < row.length; count+=1) {
-        if(row[count] === null) {
-          month[`${portSummaryModel[count]}`] = 'N/A'
-        } else if(count > 12) {
-          month[`${portSummaryModel[count]}`] = `${row[count]}%`
-        } else {
-          month[`${portSummaryModel[count]}`] = row[count]
-        }
-      }
-      result[item] = month
-      item += 1
       return row
     })
   )
-  return result
 }
 
 const portSummaryByDate = async date => {
@@ -193,7 +184,6 @@ const portSummaryByDate = async date => {
     ref = date.format('YYYYMM')
     end = date.add(1, 'month').format("YYYY-MM-DD")
   }
-  console.log('finish')
   return result
 }
 

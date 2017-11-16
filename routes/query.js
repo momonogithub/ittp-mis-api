@@ -52,6 +52,22 @@ export const countLoanOpenByDate = async (start, end) => {
   })
 }
 
+export const appById = async appId => {
+  return new Promise(function(resolve, reject) {
+    connection.query(
+      `SELECT * FROM Applications WHERE id = ?`,
+      [appId],
+      function(err, rows, fields) {
+        if(!err){
+          resolve(rows)
+        } else {
+          reject(err)
+        }
+      }
+    )
+  })
+}
+
 export const appByDate = async (start, end) => {
   return new Promise(function(resolve, reject) {
     connection.query(

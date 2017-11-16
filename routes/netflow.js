@@ -10,20 +10,19 @@ import { netflowModel } from './model/netflow'
 const router = express.Router()
 
 router.get("/getNetflow/:month/:year", async function(req, res){
-  const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM')
   try {
-    const result = await getNetflow(date)
-    res.status(200).send(result)
+    const { year, month} = req.params // input param
+    const date = moment(`${year}${month}`, 'YYYYM') 
+    res.status(200).send(await getNetflow(date))
   } catch(err) {
     res.status(500).send(err)
   }
 })
 
 router.get("/updateNetflow/:month/:year",async function(req, res){
-  const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
   try {
+    const { year, month} = req.params // input param
+    const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
     await updateNetflow(date)
     res.status(200).send(await getNetflow(date.subtract(1, 'month')))
   } catch(err) {
@@ -77,14 +76,7 @@ const updateNetflow = async date => {
   const result = await netflowByDate(date)
   for(let ref in result) {
     await upsertNetflow(ref, result[ref])
-    result[ref].osbPercent = result[ref].osbPercent === null? 
-    'N/A' : `${result[ref].osbPercent}%`
-    result[ref].percentBucket = result[ref].percentBucket.map(b => {
-      const display = b === null ? 'N/A' : `${b}%`
-      return display
-    })
   }
-  return result
 }
 
 const netflowByDate = async date => {

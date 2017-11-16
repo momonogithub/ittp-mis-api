@@ -20,21 +20,19 @@ import {
 const router = express.Router()
 
 router.get("/getPortTotal/:month/:year", async function(req, res){
-  const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM')
   try {
-    const result = await getPortTotal(date)
-    res.status(200).send(result)
+    const { year, month} = req.params // input param
+    const date = moment(`${year}${month}`, 'YYYYM')
+    res.status(200).send(await getPortTotal(date))
   } catch(err) {
     res.status(500).send(err)
   }
 })
 
 router.get("/updatePortTotal/:month/:year", async function(req, res){
-  const result = []
-  const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
   try {
+    const { year, month} = req.params // input param
+    const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
     await updatePortTotal(date)
     res.status(200).send(await getPortTotal(date.subtract(2, 'month')))
   } catch (err) {
@@ -43,28 +41,13 @@ router.get("/updatePortTotal/:month/:year", async function(req, res){
 })
 
 const updatePortTotal = async date => {
-  const result = {}
   const rows = await portTotalByDate(date)
   await Promise.all(
     rows.map(async row => {
       await upsertPortTotal(row)
-      const month = {}
-      const key = row[row.length-1]
-      row.splice(-1,1) // delete key
-      for(let count = 0; count < row.length; count+=1) {
-        if(row[count] === null) {
-          month[`${portTotalModel[count]}`] = 'N/A'
-        } else if(count > 12) {
-          month[`${portTotalModel[count]}`] = `${row[count]}%`
-        } else {
-          month[`${portTotalModel[count]}`] = row[count]
-        }
-      }
-      result[key] = month
       return row
     })
   )
-  return result
 }
 
 const getPortTotal = async date => {
