@@ -27,6 +27,9 @@ router.use('/mapAppWithLoan', async function(req, res) {
           waitTransferTimestamp : loanOpenTime,
           transferredTimestamp : loanOpenTime,
           transferredDate : loanOpenTime,
+          wayCode : await checkWayCode(application[0].wayCode),
+          education : await checkEducation(application[0].education),
+          maritalStatus : await checkMarital(application[0].maritalStatus)
         }
         await updateAppById(mapping, application[0].id)
       }
@@ -144,6 +147,7 @@ const checkWayCode = async wayCode => {
     case '็H':
     case null :
     case 'คุณจิระชัย' :
+    case '' :
       return 'HQ'
     case '0001' :
     case 'B1' :
@@ -174,6 +178,7 @@ const checkWayCode = async wayCode => {
     case 'KC Mahanakorn':
       return 'Staffcash'
     case 'www':
+    case 'www.':
     case 'WWW.':
       return 'WWW'
     default :

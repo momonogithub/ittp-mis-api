@@ -8,7 +8,7 @@ import {
   transactionByDate,
   loanByDate,
   appByDate,
-  countLoanOpenByDate } from './query'
+  countLoanCloseByDate } from './query'
 import { 
   reConvertDecimal,
   getMultiLoans,
@@ -16,6 +16,7 @@ import {
   calculateTrans,
   fixedTwoDecimal,
   summaryPayment } from './utilize'
+import { portTotal } from './model/misUpdate'
 
 const router = express.Router()
 
@@ -32,22 +33,23 @@ router.get("/getPortTotal/:month/:year", async function(req, res){
 router.get("/updatePortTotal/:month/:year", async function(req, res){
   try {
     const { year, month} = req.params // input param
-    const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
-    await updatePortTotal(date)
-    res.status(200).send(await getPortTotal(date.subtract(2, 'month')))
+    const date = moment(`${year}${month}`, 'YYYYM')
+    const [update, prev] = await Promise.all([
+      portTotalByDate(date.clone()),
+      getPortTotal(date.clone())
+    ])
+    delete(update.ref)
+    res.status(200).send({
+      ...prev,
+      [date.format('YYYYMM')] : update,
+    })
   } catch (err) {
     res.status(500).send(err)
   }
 })
 
-const updatePortTotal = async date => {
-  const rows = await portTotalByDate(date)
-  await Promise.all(
-    rows.map(async row => {
-      await upsertPortTotal(row)
-      return row
-    })
-  )
+export const updatePortTotal = async date => {
+  await upsertPortTotal(await portTotalByDate(date))
 }
 
 const getPortTotal = async date => {
@@ -64,13 +66,7 @@ const getPortTotal = async date => {
       row.splice(-1,1)
       for(let count = 1 ; count < row.length ; count += 1) { 
         // skip id at first index, key as last index
-        if(row[count] === null) { // percent indexs are 12 or more
-          month[`${portTotalModel[count - 1]}`] ='N/A'
-        } else if (count > 13) {
-          month[`${portTotalModel[count - 1]}`] = `${row[count]}%`
-        } else {
-          month[`${portTotalModel[count - 1]}`] = row[count]
-        }
+        month[`${portTotalModel[count - 1]}`] = row[count]
       }
     } else {
       portTotalModel.filter(item => item !== 'ref').map(item => {
@@ -84,7 +80,8 @@ const getPortTotal = async date => {
 }
 
 const portTotalByDate = async date => {
-  const result = []
+  let result = {}
+  date.subtract(1, 'month')
   let month = 0
   let count = 0
   let lastMonthAcc = 0
@@ -93,18 +90,18 @@ const portTotalByDate = async date => {
   let start = date.format("YYYY/MM/DD")
   let end = date.add(1, 'month').format("YYYY/MM/DD")
   // query loan, apps before selected date
-  let [loans, apps, trans, loanOpen] = await Promise.all([
+  let [loans, apps, trans] = await Promise.all([
     loanByDate(startDate, start),
     appByDate(startDate, start),
     transactionByDate(startDate, start),
-    countLoanOpenByDate(start, end)
   ])
   while(month < 2) {
     // query loan, apps, trans on selected date
-    let [queryLoans, queryApps, queryTrans] = await Promise.all([
+    let [queryLoans, queryApps, queryTrans, loanClose] = await Promise.all([
       loanByDate(start, end),
       appByDate(start, end),
-      transactionByDate(start, end)
+      transactionByDate(start, end),
+      countLoanCloseByDate(start, end)
     ])
     apps = apps.concat(queryApps)
     loans = loans.concat(queryLoans)
@@ -131,29 +128,32 @@ const portTotalByDate = async date => {
     if(lastMonthAcc !== 0) {
       growthRate = fixedTwoDecimal((loanMonth - lastMonthAcc) / lastMonthAcc * 100)
     }
-    if(calLoan[1] !== 0) {
-      debtRate = fixedTwoDecimal(sumTrans[10] / calLoan[1] * 100)
+    if(calLoan.totalSize !== 0) {
+      debtRate = fixedTwoDecimal(sumTrans.totalDelinquent / calLoan.totalSize * 100)
     }
-    if(sumTrans[10] !== 0) {
-      delinquentRate1To3 = fixedTwoDecimal(sumTrans[5] / sumTrans[10] * 100)
-      delinquentRate1To6 = fixedTwoDecimal(sumTrans[7] / sumTrans[10] * 100)
-      NPLRate = fixedTwoDecimal(sumTrans[9] / sumTrans[10] * 100)
+    if(sumTrans.totalDelinquent !== 0) {
+      delinquentRate1To3 = fixedTwoDecimal(sumTrans.size1To3 / sumTrans.totalDelinquent * 100)
+      delinquentRate1To6 = fixedTwoDecimal(sumTrans.size1To6 / sumTrans.totalDelinquent * 100)
+      NPLRate = fixedTwoDecimal(sumTrans.NPLSize / sumTrans.totalDelinquent * 100)
     }
     if(lastNPL !== 0) {
-      recovery = fixedTwoDecimal((lastNPL - sumTrans[9]) / lastNPL * 100)
+      recovery = fixedTwoDecimal((lastNPL - sumTrans.NPLSize) / lastNPL * 100)
     }
     if(month !== 0) { // not count first month
-      result.push([
-        calLoan[0], totalApps, multiLoan, loanMonth, loanOpen,
-        sumTrans[11], sumTrans[8], sumTrans[0], calLoan[1],
-        reConvertDecimal(sumTrans[7]), totalPayment,
-        sumTrans[10], calLoan[2],
-        calLoan[3], growthRate, debtRate, sumTrans[12],
-        sumTrans[13], sumTrans[14], recovery, key,
-      ])
+      const item = [
+        calLoan.countLoans, totalApps, multiLoan, loanMonth, loanClose,
+        sumTrans.countDelinquent, sumTrans.countNPL, sumTrans.nonStarter,
+        calLoan.totalSize, reConvertDecimal(sumTrans.size1To6), totalPayment,
+        sumTrans.totalDelinquent, calLoan.averageSize, calLoan.averageInterest,
+        growthRate, debtRate, sumTrans.delinquentRate1To3, 
+        sumTrans.delinquentRate1To6, sumTrans.NPLRate, recovery, key
+      ]
+      for(let i = 0 ; i < portTotalModel.length ; i+= 1) {
+        result[portTotalModel[i]] = item[i]
+      }
     }
     lastMonthAcc = loanMonth
-    lastNPL = sumTrans[9]
+    lastNPL = sumTrans.NPLSize
     key = date.format('YYYYMM')
     start = date.format("YYYY/MM/DD")
     end = date.add(1, 'month').format("YYYY/MM/DD")
@@ -165,7 +165,7 @@ const portTotalByDate = async date => {
 const getPortTotalByKey = async key => {
   return new Promise(function(resolve, reject) {
     connection.query(
-      `SELECT * FROM PortTotal WHERE ref = ?`,
+      `SELECT * FROM ${portTotal} WHERE ref = ?`,
       [key],
       function(err, rows, fields) {
         if(!err){
@@ -178,19 +178,19 @@ const getPortTotalByKey = async key => {
   })
 }
 
-const upsertPortTotal = async row => {
+const upsertPortTotal = async data => {
   let name = ''
   let value = ''
   let update = ''
-  for(let count = 0 ; count < row.length ; count ++) {
-    name = name.concat(`${portTotalModel[count]}, `)
-    value = value.concat(`${connection.escape(row[count])}, `)
-    update = update.concat(`${portTotalModel[count]}=${connection.escape(row[count])}, `)
+  for(let item in data) {
+    name = name.concat(`${item}, `)
+    value = value.concat(`${connection.escape(data[item])}, `)
+    update = update.concat(`${item}=${connection.escape(data[item])}, `)
   }
   name = name.slice(0, name.length-2)
   value = value.slice(0, value.length-2)
   update = update.slice(0, update.length-2)
-  connection.query(`INSERT INTO PortTotal (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
+  connection.query(`INSERT INTO ${portTotal} (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
   function (err, result) {
     if (err) throw err;
   })

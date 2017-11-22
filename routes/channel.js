@@ -4,45 +4,133 @@ import moment from 'moment'
 import { startDate } from '../setting'
 import { appByDate } from './query'
 import { uniqBy, groupBy, values, keys } from 'lodash'
+import { channel } from './model/misUpdate'
 
 const router = express.Router()
 
-router.get("/:month/:year", async function(req, res){
-  const { year, month} = req.params // input param
-  const date = moment(`${year}${month}`, 'YYYYM').subtract(12, 'month')
-  const result = await getChennel(date)
-  res.send(result)
+router.get("/getChannel/:month/:year", async function(req, res) {
+  try {
+    const { year, month} = req.params // input param
+    const date = moment(`${year}${month}`, 'YYYYM').subtract(12, 'month')
+    res.status(200).send(await getChannel(date))
+  } catch(err) {
+    res.status(500).send(await getChannel(date))
+  }
 })
 
-const getChennel = async date => {
+router.get("/updateChannel/:month/:year", async function(req, res){
+  try {
+    const { year, month} = req.params // input param
+    const date = moment(`${year}${month}`, 'YYYYM')
+    const [update, prev] = await Promise.all([
+      channelByDate(date.clone()),
+      getChannel(date.clone().subtract(12, 'month')),
+    ])
+    res.status(200).send({
+      ...prev,
+      ...update,
+    })
+  } catch(err) {
+    res.status(500).send(err)
+  }
+})
+
+const getChannel = async date => {
   const result = {}
   for(let month = 0 ; month < 13 ; month += 1) {
-    let key = date.format("YYYYMM")
-    const start = date.format("YYYY-MM-DD HH:mm:ss")
-    const end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
-    const applications = await appByDate(start, end)
-    let appGroup = 0 , approvedGroup = 0 , percentGroup = 0
-    const applicationsGroup = groupBy(applications, 'wayCode')
+    const key = date.format("YYYYMM")
     result[key] = {}
-    for(let item in applicationsGroup){
-      let appChannel = applicationsGroup[item].length
-      let approvedChannel = 0 , percentChannel = 0
-      applicationsGroup[item].map(app => {
-        if(app.waitConfirmTimestamp !== null) {
-          approvedChannel += 1
-          approvedGroup += 1
-        }
-        return app
-      })
-      let branchValue = {
-        Application: appChannel,
-        Approved: approvedChannel,
-        Percent: `${Math.ceil(approvedChannel/appChannel * 10000)/100}%`,
+    const datas = await getChannelByKey(key)
+    datas.map(data => {
+      result[key][data.wayCode] = {
+        Application : data.application,
+        Approved : data.approved,
+        Percent : data.percent,
       }
-      result[key] = Object.assign(result[key], { [item]: branchValue })
-    }
+      return data
+    })
+    date.add(1, 'month')
   }
   return result
+}
+
+export const updateChannel = async date => {
+  const result = await channelByDate(date)
+  for(let ref in result) {
+    for(let wayCode in result[ref]) {
+      await upsertChannel(ref, wayCode, result[ref][wayCode])
+    }
+  }
+}
+
+const channelByDate = async date => {
+  const result = {}
+  let key = date.format("YYYYMM")
+  const start = date.format("YYYY-MM-DD HH:mm:ss")
+  const end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
+  const applications = await appByDate(start, end)
+  let appGroup = 0 , approvedGroup = 0 , percentGroup = 0
+  const applicationsGroup = groupBy(applications, 'wayCode')
+  result[key] = {}
+  for(let item in applicationsGroup){
+    let appChannel = applicationsGroup[item].length
+    let approvedChannel = 0 , percentChannel = 0
+    applicationsGroup[item].map(app => {
+      if(app.waitConfirmTimestamp !== null) {
+        approvedChannel += 1
+        approvedGroup += 1
+      }
+      return app
+    })
+    let branchValue = {
+      Application: appChannel,
+      Approved: approvedChannel,
+      Percent: Math.ceil(approvedChannel/appChannel * 10000)/100,
+    }
+    result[key] = Object.assign(result[key], { [item]: branchValue })
+  }
+  return result
+}
+
+const getChannelByKey = async key => {
+  return new Promise(function(resolve, reject) {
+    connection.query(
+      `SELECT * FROM ${channel} WHERE ref = ?`,
+      [key],
+      function(err, rows, fields) {
+        if(!err){
+          resolve(rows)
+        } else {
+          reject(err)
+        }
+      }
+    )
+  })
+}
+
+const upsertChannel = async (ref, wayCode, data) => {
+  const insertSet = {
+    application : data.Application,
+    approved : data.Approved,
+    percent : data.Percent,
+    wayCode : `${wayCode}`,
+    ref : `${ref}`,
+  }
+  let name = ''
+  let value = ''
+  let update = ''
+  for(let item in insertSet) {
+    name = name.concat(`${item}, `)
+    value = value.concat(`${connection.escape(insertSet[item])}, `)
+    update = update.concat(`${item}=${connection.escape(insertSet[item])}, `)
+  }
+  name = name.slice(0, name.length-2)
+  value = value.slice(0, value.length-2)
+  update = update.slice(0, update.length-2)
+  connection.query(`INSERT INTO ${channel} (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
+  function (err, result) {
+    if (err) throw err;
+  })
 }
 
 export default router

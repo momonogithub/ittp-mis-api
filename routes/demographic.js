@@ -6,6 +6,8 @@ import { startDate, maxBucket } from '../setting'
 import { appById, appByDate, loanByDate, transactionByDate } from './query'
 import { uniqBy, groupBy, values, keys } from 'lodash'
 import { reConvertDecimal, fixedTwoDecimal, getNumberOfDays } from './utilize'
+import { demographicModel } from './model/demographic'
+import { demographic } from './model/misUpdate'
 
 const router = express.Router()
 
@@ -27,60 +29,18 @@ const demoList = [
 
 router.get("/getDemographic/:month/:year", async function(req, res){
   try {
-    console.time('demographic')
-    let datas = []
     const { year, month} = req.params // input param
-    const demoMonth = {}
-    const date = moment(`${year}${month}`, 'YYYYM').subtract(12, 'month')
-    let start = date.format("YYYY-MM-DD HH:mm:ss")
-    let key = date.format('YYYY/MM')
-    let end = date.add(1, 'month')
-    console.time('combine data')
-    for(let i = 0 ; i < 13 ; i += 1) {
-      const monthlyDatas = []
-      const endSql = end.format("YYYY-MM-DD HH:mm:ss")
-      let loans, applications, transactions
-      if(i === 0) {
-        loans = await loanByDate(startDate, endSql)
-        applications = await appByDate(startDate, endSql)
-        transactions = await transactionByDate(startDate, endSql)
-      } else {
-        loans = await loanByDate(start, endSql)
-        applications = await appByDate(start, endSql)
-        transactions = await transactionByDate(start, endSql)
-      }
-      loans.filter(loan => loan.app_id !== 0).map(loan => {
-        const tran = transactions.filter(tran => tran.loan_id === loan.loan_id)
-        const app = applications.filter(app => app.id === loan.app_id)
-        delete loan.created_date
-        monthlyDatas.push({
-          ...app[0],
-          ...loan,
-          transaction : tran
-        })
-        return loan
-      })
-      datas = datas.concat(monthlyDatas)
-      demoMonth[key] = datas
-      start = date.format("YYYY-MM-DD HH:mm:ss")
-      key = date.format('YYYY/MM')
-      end = date.add(1, 'month')
-    }
-    
-    console.timeEnd('combine data')
-    console.time('demo')
-    let dataGroup = await demographicGroup(datas, date)
-    dataGroup.Total = { Total : datas }
-    dataGroup.Month = demoMonth
-    for(let demo in dataGroup) {
-      for(let group  in dataGroup[demo]) {
-        dataGroup[demo][group] = 
-          await getDemographic(dataGroup[demo][group], start, end)
-      }
-    }
-    console.timeEnd('demo')
-    console.timeEnd('demographic')
-    res.status(200).send(dataGroup)
+    res.status(200).send(await getDemographic(year, month))
+  } catch (err) {
+    res.status(500).send(err)
+  }
+})
+
+router.get("/updateDemographic/:month/:year", async function(req, res){
+  try {
+    const { year, month} = req.params // input param
+    await updateDemographic(moment(`${year}${month}`, 'YYYYM'))
+    res.status(200).send(await getDemographic(year, month))
   } catch(err) {
     console.log(err)
     res.status(500).send(err)
@@ -92,7 +52,7 @@ router.get("/getDemoList", async function(req, res){
     const nameList = {}
     demoList.map(demo => {
       nameList[`${demo}`] = {
-        status: false
+        status: true
       }
       return demo
     })
@@ -102,7 +62,77 @@ router.get("/getDemoList", async function(req, res){
   }
 })
 
-const getDemographic = async (datas, start, end) => {
+const getDemographic = async (year, month) => {
+  const result = {}
+  const demoMonth = {}
+  const date = moment(`${year}${month}`, 'YYYYM').subtract(12, 'month')
+  let ref
+  for(let i = 0 ; i < 13 ; i += 1) {
+    ref = date.format('YYYY/MM')
+    let data = await getTotalDemographic(ref)
+    data = checkData(data)
+    demoMonth[ref] = data
+    date.add(1, 'month')
+  }
+  result['Month'] = demoMonth
+  const demo = await getDemographicByKey(ref)
+  for(let i = 0 ; i < demo.length ; i += 1) {
+    if(result[demo[i].demoGroup] === undefined) {
+      result[demo[i].demoGroup] = {}
+      result[demo[i].demoGroup][demo[i].demoName] = checkData([demo[i]])
+    }else {
+      result[demo[i].demoGroup][demo[i].demoName] = checkData([demo[i]])
+    }
+  }
+  return result
+}
+
+export const updateDemographic = async date => {
+  let datas = []
+  let key = date.format('YYYY/MM')
+  let end = date.clone().add(1, 'month')
+  let loans = await loanByDate(startDate, end.format("YYYY-MM-DD HH:mm:ss"))
+  let applications = await appByDate(startDate, end.format("YYYY-MM-DD HH:mm:ss"))
+  let transactions = await transactionByDate(startDate, end.format("YYYY-MM-DD HH:mm:ss"))
+  loans.filter(loan => loan.app_id !== 0).map(loan => {
+    const tran = transactions.filter(tran => tran.loan_id === loan.loan_id)
+    const app = applications.filter(app => app.id === loan.app_id)
+    delete loan.created_date
+    datas.push({
+      ...app[0],
+      ...loan,
+      transaction : tran
+    })
+    return loan
+  })
+  let dataGroup = await demographicGroup(datas, date)
+  dataGroup['Total'] = { Total : datas }
+  for(let demo in dataGroup) {
+    for(let item  in dataGroup[demo]) {
+      dataGroup[demo][item] = await calDemographic(dataGroup[demo][item], date, end)
+      const sqlRow = {}
+      if(demo === 'Total') {
+        sqlRow[`${[demographicModel[7]]}`] = 'Total'
+        sqlRow[`${[demographicModel[8]]}`] = `Total`
+        sqlRow[`${[demographicModel[9]]}`] = key
+      } else {
+        sqlRow[`${[demographicModel[7]]}`] = item
+        sqlRow[`${[demographicModel[8]]}`]  = demo
+        sqlRow[`${[demographicModel[9]]}`] = key
+      }
+      sqlRow[`${[demographicModel[0]]}`] = dataGroup[demo][item].newAccount
+      sqlRow[`${[demographicModel[1]]}`] = dataGroup[demo][item].loanSize
+      sqlRow[`${[demographicModel[2]]}`] = dataGroup[demo][item].averageInt
+      sqlRow[`${[demographicModel[3]]}`] = dataGroup[demo][item].averageLoanTerm
+      sqlRow[`${[demographicModel[4]]}`] = dataGroup[demo][item].osb
+      sqlRow[`${[demographicModel[5]]}`] = dataGroup[demo][item].delinquentRate
+      sqlRow[`${[demographicModel[6]]}`] = dataGroup[demo][item].nplRate
+      await upsertDemographic(sqlRow)
+    }
+  }
+}
+
+const calDemographic = async (datas, start, end) => {
   let loanSize = 0
   let int = 0
   let newAccount = 0
@@ -120,11 +150,11 @@ const getDemographic = async (datas, start, end) => {
           loanTerm += data.installment_term
           installLoan += 1
         }
+        const time = moment(data.open_date)
+        if(time.isBetween(start.clone().subtract(1, 'seconds'), end)) {
+          newAccount += 1
+        }
         if(data['transaction'].length > 0) {
-          const time = moment(data['transaction'][data['transaction'].length - 1].trans_date)
-          if(time.isBetween(start, end)) {
-            newAccount += 1
-          }
           const latestTran = data['transaction'][0]
           const duration = getNumberOfDays(latestTran.trans_date, end.toDate())
           const newInterest = data.daily_int * duration
@@ -147,15 +177,89 @@ const getDemographic = async (datas, start, end) => {
     newAccount : newAccount,
     loanSize: reConvertDecimal(loanSize),
     averageInt: datas.length > 0 ? 
-      fixedTwoDecimal(int / datas.length) : 'N/A',
+      fixedTwoDecimal(int / datas.length) : 0,
     averageLoanTerm: installLoan > 0 ?
-      fixedTwoDecimal(loanTerm / installLoan) : 'N/A',
+      fixedTwoDecimal(loanTerm / installLoan) : 0,
     osb: reConvertDecimal(osb),
     delinquentRate: datas.length > 0 ? 
-      `${fixedTwoDecimal(delinquent / datas.length)}%` : 'N/A',
+      fixedTwoDecimal(delinquent / datas.length) : null,
     nplRate: datas.length > 0 ? 
-      `${fixedTwoDecimal(npl / datas.length)}%` : 'N/A'
+      fixedTwoDecimal(npl / datas.length) : null
   }
+}
+
+const checkData = data => {
+  if(data.length > 0) {
+    return {
+      newAccount : data[0].newAccount,
+      loanSize: data[0].loanSize,
+      averageInt: data[0].averageIntRate,
+      averageLoanTerm: data[0].averageLoanTerm,
+      osb: data[0].osb,
+      delinquentRate: data[0].delinquentRate,
+      nplRate: data[0].nplRate
+    }
+  } else {
+    return {
+      newAccount : 'No Data',
+      loanSize: 'No Data',
+      averageInt: 'No Data',
+      averageLoanTerm: 'No Data',
+      osb: 'No Data',
+      delinquentRate: 'No Data',
+      nplRate: 'No Data'
+    }
+  }
+}
+
+const getTotalDemographic = async key => {
+  return new Promise(function(resolve, reject) {
+    connection.query(
+      `SELECT * FROM ${demographic} WHERE demoGroup = 'Total' AND ref = ?`,
+      [key],
+      function(err, rows, fields) {
+        if(!err){
+          resolve(rows)
+        } else {
+          reject(err)
+        }
+      }
+    )
+  })
+}
+
+const getDemographicByKey = async key => {
+  return new Promise(function(resolve, reject) {
+    connection.query(
+      `SELECT * FROM ${demographic} WHERE ref = ?`,
+      [key],
+      function(err, rows, fields) {
+        if(!err){
+          resolve(rows)
+        } else {
+          reject(err)
+        }
+      }
+    )
+  })
+}
+
+const upsertDemographic = async data => {
+  let name = ''
+  let value = ''
+  let update = ''
+  for(let item in data) {
+    name = name.concat(`${item}, `)
+    value = value.concat(`${connection.escape(data[item])}, `)
+    update = update.concat(`${item}=${connection.escape(data[item])}, `)
+  }
+  name = name.slice(0, name.length-2)
+  value = value.slice(0, value.length-2)
+  update = update.slice(0, update.length-2)
+  connection.query(`INSERT INTO ${demographic} (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
+  function (err, result) {
+    if (err) throw err;
+  })
 }
 
 export default router

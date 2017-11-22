@@ -16,8 +16,8 @@ export const getMultiLoans = async loans => { // count customer with multiple lo
 
 export const calculateLoans = async (loans) => {
   // variable
-  const result = []
-  const totalLoan = loans.length
+  const result = {}
+  const countLoans = loans.length
   let totalSize = 0
   let interest = 0
   let averageSize = 0
@@ -29,20 +29,20 @@ export const calculateLoans = async (loans) => {
     return loan
   })
   // percentage check not 0
-  if(totalLoan !== 0) {
-    averageSize = reConvertDecimal(totalSize / totalLoan)
-    averageInterest = fixedTwoDecimal(interest / totalLoan)
+  if(countLoans !== 0) {
+    averageSize = reConvertDecimal(totalSize / countLoans)
+    averageInterest = fixedTwoDecimal(interest / countLoans)
   }
   // return value
-  result.push( 
-    totalLoan, reConvertDecimal(totalSize), 
-    averageSize, averageInterest
-  )
+  result.countLoans = countLoans
+  result.totalSize = reConvertDecimal(totalSize)
+  result.averageSize = averageSize
+  result.averageInterest = averageInterest
   return result
 }
 
 export const calculateTrans = async trans => {
-  const result = []
+  const result = {}
   let nonStarter = 0
   let active = 0
   let bucketSize = new Array(maxBucket).fill(0)
@@ -93,26 +93,27 @@ export const calculateTrans = async trans => {
     countDelinquent += bucketCount[count - 1]
     count += 1
   }
-
-  let delinquentRate1To3 = 0
-  let delinquentRate1To6 = 0
-  let NPLRate = 0
   if(totalDelinquent !== 0) {
-    delinquentRate1To3 = fixedTwoDecimal(size1To3 / totalDelinquent * 100)
-    delinquentRate1To6 = fixedTwoDecimal(size1To6 / totalDelinquent * 100)
-    NPLRate = fixedTwoDecimal(NPLSize / totalDelinquent * 100)
+    result.delinquentRate1To3 = fixedTwoDecimal(size1To3 / totalDelinquent * 100)
+    result.delinquentRate1To6 = fixedTwoDecimal(size1To6 / totalDelinquent * 100)
+    result.NPLRate = fixedTwoDecimal(NPLSize / totalDelinquent * 100)
   } else {
-    delinquentRate1To3 = null
-    delinquentRate1To6 = null
-    NPLRate = null
+    result.delinquentRate1To3 = null
+    result.delinquentRate1To6 = null
+    result.NPLRate = null
   }
-
-  result.push(
-    nonStarter, bucketSize, bucketCount, active, count1To3, size1To3,
-    count1To6, size1To6, countNPL, NPLSize, 
-    reConvertDecimal(totalDelinquent),
-    countDelinquent, delinquentRate1To3, delinquentRate1To6, NPLRate,
-  )
+  result.nonStarter = nonStarter
+  result.bucketSize = bucketSize
+  result.bucketCount = bucketCount
+  result.active = active
+  result.count1To3 = count1To3
+  result.size1To3 = size1To3
+  result.count1To6 = count1To6
+  result.size1To6 = size1To6
+  result.countNPL = countNPL
+  result.NPLSize = NPLSize
+  result.totalDelinquent = reConvertDecimal(totalDelinquent)
+  result.countDelinquent = countDelinquent
   return result
 }
 

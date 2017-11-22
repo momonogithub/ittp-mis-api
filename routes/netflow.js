@@ -3,9 +3,10 @@ import connection from '../database'
 import moment from 'moment'
 import { uniqBy, values } from 'lodash'
 import { reConvertDecimal, fixedTwoDecimal, getNumberOfDays } from './utilize'
-import { transactionByDate, loanById } from './query'
+import { transactionByDate, loanByDate } from './query'
 import { maxBucket, startDate, NPL } from '../setting'
 import { netflowModel } from './model/netflow'
+import { netflow } from './model/misUpdate'
 
 const router = express.Router()
 
@@ -22,9 +23,15 @@ router.get("/getNetflow/:month/:year", async function(req, res){
 router.get("/updateNetflow/:month/:year",async function(req, res){
   try {
     const { year, month} = req.params // input param
-    const date = moment(`${year}${month}`, 'YYYYM').subtract(1, 'month')
-    await updateNetflow(date)
-    res.status(200).send(await getNetflow(date.subtract(1, 'month')))
+    const date = moment(`${year}${month}`, 'YYYYM')
+    const [update, prev] = await Promise.all([
+      netflowByDate(date.clone()),
+      getNetflow(date.clone()),
+    ])
+    res.status(200).send({
+      ...prev,
+      ...update,
+    })
   } catch(err) {
     res.status(500).send(err)
   }
@@ -44,18 +51,14 @@ const getNetflow = async date => {
       row.splice(-1,1)
       month.osb = row[1]
       month.osbTotal = row[2]
-      month.osbPercent = row[3] === null? 'N/A' : `${row[3]}%`
+      month.osbPercent = row[3]
       const bucket = []
       const percentBucket = []
       for(let item = 4 ; item < row.length ; item += 1) {
         if(item < maxBucket + 4) {
           bucket.push(row[item])
         } else {
-          if (row[item] === null) {
-            percentBucket.push('N/A')
-          } else {
-            percentBucket.push(`${row[item]}%`)
-          }     
+          percentBucket.push(row[item])
         }
       }
       month.bucket = bucket
@@ -63,16 +66,16 @@ const getNetflow = async date => {
     } else {
       month.osb = 'No Data'
       month.osbTotal = 'No Data'
-      month.osbPercent = 'N/A'
+      month.osbPercent = null
       month.bucket = new Array(maxBucket).fill('No Data')
-      month.percentBucket = new Array(maxBucket).fill('N/A')
+      month.percentBucket = new Array(maxBucket).fill(null)
     }
     result[key] = month
   }
   return result
 }
 
-const updateNetflow = async date => {
+export const updateNetflow = async date => {
   const result = await netflowByDate(date)
   for(let ref in result) {
     await upsertNetflow(ref, result[ref])
@@ -83,6 +86,7 @@ const netflowByDate = async date => {
   const result = {}
   const displayDate = []
   let lastTotal = 0
+  date.subtract(1, 'month')
   // count variable
   for(let month = 0 ; month < 2 ; month += 1) {
     let osbTotal = 0
@@ -93,12 +97,16 @@ const netflowByDate = async date => {
     let start = date.format("YYYY-MM-DD HH:mm:ss")
     let end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
     //query Transaction and make unique by loan_id
-    const trans = uniqBy(await transactionByDate(start, end), 'loan_id')
+    let [trans, loans] = await Promise.all([
+      transactionByDate(start, end),
+      loanByDate(startDate, end)
+    ]) 
     // summary data by one transaction
+    trans =  uniqBy(trans, 'loan_id')
     await Promise.all(
       trans.map(async tran => {
         // osb calculate
-        const loan = await loanById(tran.loan_id)
+        const loan = loans.filter(loan => loan.loan_id === tran.loan_id)
         const duration = getNumberOfDays(tran.trans_date, date.toDate())
         const newInterest = loan[0].daily_int * duration
         const temp = tran.cf_principal + tran.cf_interest + tran.cf_fee + newInterest
@@ -148,7 +156,7 @@ const netflowByDate = async date => {
 const getNetflowByKey = async key => {
   return new Promise(function(resolve, reject) {
     connection.query(
-      `SELECT * FROM Netflow WHERE ref = ?`,
+      `SELECT * FROM ${netflow} WHERE ref = ?`,
       [key],
       function(err, rows, fields) {
         if(!err){
@@ -177,7 +185,7 @@ const upsertNetflow = async (ref, data) => {
   name = name.slice(0, name.length-2)
   value = value.slice(0, value.length-2)
   update = update.slice(0, update.length-2)
-  connection.query(`INSERT INTO Netflow (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
+  connection.query(`INSERT INTO ${netflow} (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
   function (err, result) {
     if (err) throw err;
   })
