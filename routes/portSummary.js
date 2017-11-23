@@ -34,7 +34,6 @@ router.get("/updatePortSummary/:month/:year", async function(req, res){
     const { year, month} = req.params // input param
     const date = moment(`${year}${month}`, 'YYYYM')
     await updatePortSummary(date.clone())
-    
     res.status(200).send(await getPortSummary(date))
   } catch (err) {
     res.status(500).send(err)

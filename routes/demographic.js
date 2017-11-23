@@ -52,7 +52,7 @@ router.get("/getDemoList", async function(req, res){
     const nameList = {}
     demoList.map(demo => {
       nameList[`${demo}`] = {
-        status: true
+        status: false
       }
       return demo
     })
