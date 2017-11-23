@@ -6,8 +6,8 @@ export const demographicModel = [
   'osb',
   'delinquentRate',
   'nplRate',
-  'demoName',
   'demoGroup',
+  'demoName',
   'ref'
 ]
 
@@ -22,4 +22,9 @@ export const demographicOption = [
   'VARCHAR(50)',
   'VARCHAR(50)',
   'VARCHAR(7)'
+]
+
+export const demographicUnique = [
+  'demoName',
+  'ref'
 ]

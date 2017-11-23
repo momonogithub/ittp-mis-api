@@ -4,7 +4,7 @@ import moment from 'moment'
 import { startDate } from '../setting'
 import { appByDate } from './query'
 import { uniqBy, groupBy, values, keys } from 'lodash'
-import { channel } from './model/misUpdate'
+import { channel } from '../setting'
 
 const router = express.Router()
 
@@ -22,14 +22,8 @@ router.get("/updateChannel/:month/:year", async function(req, res){
   try {
     const { year, month} = req.params // input param
     const date = moment(`${year}${month}`, 'YYYYM')
-    const [update, prev] = await Promise.all([
-      channelByDate(date.clone()),
-      getChannel(date.clone().subtract(12, 'month')),
-    ])
-    res.status(200).send({
-      ...prev,
-      ...update,
-    })
+    await updateChannel(date.clone())
+    res.status(200).send(await getChannel(date.clone().subtract(12, 'month')))
   } catch(err) {
     res.status(500).send(err)
   }

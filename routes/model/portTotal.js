@@ -43,5 +43,9 @@ export const portTotalOption = [
   'DOUBLE',
   'DOUBLE',
   'DOUBLE',
-  'VARCHAR(6) UNIQUE'
+  'VARCHAR(6)'
+]
+
+export const portTotalUnique = [
+  'ref'
 ]

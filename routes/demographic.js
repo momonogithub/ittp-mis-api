@@ -7,7 +7,7 @@ import { appById, appByDate, loanByDate, transactionByDate } from './query'
 import { uniqBy, groupBy, values, keys } from 'lodash'
 import { reConvertDecimal, fixedTwoDecimal, getNumberOfDays } from './utilize'
 import { demographicModel } from './model/demographic'
-import { demographic } from './model/misUpdate'
+import { demographic } from '../setting'
 
 const router = express.Router()
 
@@ -116,8 +116,8 @@ export const updateDemographic = async date => {
         sqlRow[`${[demographicModel[8]]}`] = `Total`
         sqlRow[`${[demographicModel[9]]}`] = key
       } else {
-        sqlRow[`${[demographicModel[7]]}`] = item
-        sqlRow[`${[demographicModel[8]]}`]  = demo
+        sqlRow[`${[demographicModel[7]]}`] = demo
+        sqlRow[`${[demographicModel[8]]}`]  = item
         sqlRow[`${[demographicModel[9]]}`] = key
       }
       sqlRow[`${[demographicModel[0]]}`] = dataGroup[demo][item].newAccount

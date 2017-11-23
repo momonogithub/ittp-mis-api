@@ -13,3 +13,8 @@ export const channelOption = [
   'VARCHAR(10)',
   'VARCHAR(6)',
 ]
+
+export const channelUnique = [
+  'wayCode',
+  'ref'
+]

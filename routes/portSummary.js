@@ -14,7 +14,7 @@ import {
   fixedTwoDecimal,
   summaryPayment
 } from './utilize'
-import { portSummary } from './model/misUpdate'
+import { portSummary } from '../setting'
 
 const router = express.Router()
 
@@ -33,7 +33,9 @@ router.get("/updatePortSummary/:month/:year", async function(req, res){
   try {
     const { year, month} = req.params // input param
     const date = moment(`${year}${month}`, 'YYYYM')
-    res.status(200).send(await portSummaryByDate(date))
+    await updatePortSummary(date.clone())
+    
+    res.status(200).send(await getPortSummary(date))
   } catch (err) {
     res.status(500).send(err)
   }

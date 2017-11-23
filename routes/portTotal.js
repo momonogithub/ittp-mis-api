@@ -16,7 +16,7 @@ import {
   calculateTrans,
   fixedTwoDecimal,
   summaryPayment } from './utilize'
-import { portTotal } from './model/misUpdate'
+import { portTotal } from '../setting'
 
 const router = express.Router()
 
@@ -34,15 +34,8 @@ router.get("/updatePortTotal/:month/:year", async function(req, res){
   try {
     const { year, month} = req.params // input param
     const date = moment(`${year}${month}`, 'YYYYM')
-    const [update, prev] = await Promise.all([
-      portTotalByDate(date.clone()),
-      getPortTotal(date.clone())
-    ])
-    delete(update.ref)
-    res.status(200).send({
-      ...prev,
-      [date.format('YYYYMM')] : update,
-    })
+    await updatePortTotal(date.clone())
+    res.status(200).send(await getPortTotal(date))
   } catch (err) {
     res.status(500).send(err)
   }

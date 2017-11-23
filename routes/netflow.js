@@ -6,7 +6,7 @@ import { reConvertDecimal, fixedTwoDecimal, getNumberOfDays } from './utilize'
 import { transactionByDate, loanByDate } from './query'
 import { maxBucket, startDate, NPL } from '../setting'
 import { netflowModel } from './model/netflow'
-import { netflow } from './model/misUpdate'
+import { netflow } from '../setting'
 
 const router = express.Router()
 
@@ -24,14 +24,8 @@ router.get("/updateNetflow/:month/:year",async function(req, res){
   try {
     const { year, month} = req.params // input param
     const date = moment(`${year}${month}`, 'YYYYM')
-    const [update, prev] = await Promise.all([
-      netflowByDate(date.clone()),
-      getNetflow(date.clone()),
-    ])
-    res.status(200).send({
-      ...prev,
-      ...update,
-    })
+    await updateNetflow(date.clone())
+    res.status(200).send(await getNetflow(date))
   } catch(err) {
     res.status(500).send(err)
   }

@@ -57,5 +57,9 @@ export const netflowOption = [
   'DOUBLE',
   'DOUBLE',
   'DOUBLE',
-  'VARCHAR(20) UNIQUE'
+  'VARCHAR(20)'
+]
+
+export const netflowUnique = [
+  'ref'
 ]
