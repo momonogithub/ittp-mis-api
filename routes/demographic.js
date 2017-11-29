@@ -257,8 +257,8 @@ const upsertDemographic = async data => {
   value = value.slice(0, value.length-2)
   update = update.slice(0, update.length-2)
   connection.query(`INSERT INTO ${demographic} (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
-  function (err, result) {
-    if (err) throw err;
+  function (err) {
+    if (err) throw err
   })
 }
 

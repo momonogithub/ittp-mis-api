@@ -1,3 +1,4 @@
+import bcrypt from 'bcrypt'
 import bodyParser from 'body-parser'
 import cors from 'cors'
 import connection from './database'
@@ -16,21 +17,9 @@ import portTotal from './routes/portTotal'
 import portSummary from './routes/portSummary'
 import product from './routes/product'
 import wayCode from './routes/wayCode'
+import { getUserById, getUserByName, updateUserByName} from './routes/user'
 
 const app = express()
-
-const users = [
-  {
-    id: 1,
-    name: 'jonathanmh',
-    password: '%2yx4'
-  },
-  {
-    id: 2,
-    name: 'test',
-    password: 'test'
-  }
-]
 
 const ExtractJwt = passportJWT.ExtractJwt
 const JwtStrategy = passportJWT.Strategy
@@ -39,9 +28,9 @@ const jwtOptions = {}
 jwtOptions.jwtFromRequest = ExtractJwt.fromHeader('authorization')
 jwtOptions.secretOrKey = 'ittpMis'
 
-const strategy = new JwtStrategy(jwtOptions, function(jwt_payload, next) {
-  console.log('payload received', jwt_payload)
+const strategy = new JwtStrategy(jwtOptions, async function(jwt_payload, next) {  
   // usually this would be a database call:
+  const users = await getUserById(jwt_payload.id)
   const user = users[findIndex(users, {id: jwt_payload.id})]
   if (user) {
     next(null, user)
@@ -57,31 +46,36 @@ app.use(bodyParser.urlencoded({
   extended: true
 }))
 
-
 app.use(bodyParser.json())
 app.use(cors())
-app.use('/channel', channel)
-app.use('/demographic', demographic)
-app.use('/portTotal',  portTotal)
-app.use('/portSummary',  portSummary)
-app.use('/netflow', netflow)
-app.use('/product', product)
-app.use('/wayCode', wayCode)
+app.use('/channel', passport.authenticate('jwt', { session: false }), channel)
+app.use('/demographic', passport.authenticate('jwt', { session: false }), demographic)
+app.use('/portTotal', passport.authenticate('jwt', { session: false }),  portTotal)
+app.use('/portSummary', passport.authenticate('jwt', { session: false }),  portSummary)
+app.use('/netflow', passport.authenticate('jwt', { session: false }), netflow)
+app.use('/product', passport.authenticate('jwt', { session: false }), product)
+app.use('/wayCode', passport.authenticate('jwt', { session: false }), wayCode)
 app.use('/migrate', migrate)
 
-app.post("/login", function(req, res) {
+app.post("/login", async function(req, res) {
   if(req.body.name && req.body.password){
     const name = req.body.name
     const password = req.body.password
         // usually this would be a database call:
-    const user = users[findIndex(users, {name: name})]
+    const users = await getUserByName(name)
+    const user = users[findIndex(users, {username: name})]
     if( ! user ){
       res.status(401).json({message:"User doesn't exist"})
     } else {
-      if(user.password === req.body.password) {
+      const compare = await bcrypt.compare(req.body.password, user.password)
+      if(compare) {
         // from now on we'll identify the user by the id and the id is the only personalized value that goes into our token
         const payload = {id: user.id}
         const token = jwt.sign(payload, jwtOptions.secretOrKey)
+        await updateUserByName({
+          username: name,
+          lastLoginDate: new Date(),
+        })
         res.status(200).json({token: token})
       } else {
         res.status(401).json({message:"Invalid username or password"})

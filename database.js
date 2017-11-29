@@ -1,17 +1,22 @@
 import cron from 'node-cron'
 import mysql from 'mysql'
 import moment from 'moment'
-import { startDate, channel, demographic, netflow, portSummary, portTotal } from './setting'
 import { channelModel, channelOption, channelUnique } from './routes/model/channel'
 import { demographicModel, demographicOption, demographicUnique } from './routes/model/demographic'
 import { portTotalModel, portTotalOption, portTotalUnique } from './routes/model/portTotal'
 import { portSummaryModel, portSummaryOption, portSummaryUnique } from './routes/model/portSummary'
 import { netflowModel, netflowOption, netflowUnique } from './routes/model/netflow'
+import { userModel, userOption, userUnique} from './routes/model/user'
 import { updateChannel } from './routes/channel'
 import { updateDemographic } from './routes/demographic'
 import { updatePortSummary } from './routes/portSummary'
 import { updatePortTotal } from './routes/portTotal'
 import { updateNetflow } from './routes/netflow'
+import { intitialUser } from './routes/user'
+import { 
+  startDate, channel, demographic,
+  netflow, portSummary, portTotal,
+  userTabel } from './setting'
 
 
 const database = 'ittpdev'
@@ -32,7 +37,7 @@ const connection = mysql.createConnection(loginMysql)
 
 connection.connect(async function(err){
   if(!err) {
-    let sql = await checkExistTable(database, channel)
+    let sql = await checkExistTable(database, userTabel)
     if(!(sql.length > 0)) {
       console.log('---------- Create Table ----------')
       await Promise.all([
@@ -41,7 +46,9 @@ connection.connect(async function(err){
         createTable(portSummary, portSummaryModel, portSummaryOption, portSummaryUnique),
         createTable(portTotal, portTotalModel, portTotalOption, portTotalUnique),
         createTable(netflow, netflowModel, netflowOption, netflowUnique),
+        createTable(userTabel, userModel, userOption, userUnique),
       ])
+      console.log(await intitialUser())
       const start = moment(startDate)
       const now = new Date()
       let month = start.month()

@@ -134,9 +134,9 @@ const updateAppById = async (mapData, appId) => {
   update = update.slice(0, update.length-2)
   connection.query(`UPDATE Applications SET ${update} WHERE id = ?`,
   [appId],
-  function (err, result) {
+  function (err) {
     console.log(`update ${appId}`)
-    if (err) throw err;
+    if (err) throw err
   })
 }
 
