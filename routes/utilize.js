@@ -1,5 +1,5 @@
 import { uniqBy, groupBy, values, keys } from 'lodash'
-import { maxBucket, startDate, NPL } from '../setting'
+import { maxBucket, startDate } from '../setting'
 
 export const reConvertDecimal = data => fixedTwoDecimal(data / 10000)
 export const fixedTwoDecimal = data => Math.ceil(data * 100) / 100
@@ -31,7 +31,7 @@ export const calculateLoans = async (loans) => {
   // percentage check not 0
   if(countLoans !== 0) {
     averageSize = reConvertDecimal(totalSize / countLoans)
-    averageInterest = fixedTwoDecimal(interest / countLoans)
+    averageInterest = fixedTwoDecimal(interest / countLoans * 100) 
   }
   // return value
   result.countLoans = countLoans
@@ -78,7 +78,7 @@ export const calculateTrans = async trans => {
   let countDelinquent = 0
   count = 1
   while (count <= maxBucket) { // While loop summary bucket size and count
-    if(count < NPL) {
+    if(count < 7) {
       if(count < 4) {
         count1To3 += bucketSize[count - 1]
         size1To3 += bucketSize[count - 1]
