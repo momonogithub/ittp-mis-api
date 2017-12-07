@@ -5,27 +5,25 @@ const router = express.Router()
 
 router.get('/getNameList', async function(req, res){
   try {
-    const result = await queryWayCode()
+    const result = await getWayCode()
     res.status(200).send(result)
   } catch (err) {
     res.status(500).send(err)
   }
 })
 
-export const queryWayCode = async () => {
+export const getWayCode = async () => {
   return new Promise(function(resolve, reject) {
     connection.query(
-      `SELECT code, name FROM WayCode 
-        WHERE status = 'active' ORDER BY id ASC `,
+      `SELECT DISTINCT wayCode AS wayCode FROM Applications `,
       function(err, rows, fields) {
         if(!err){
           const nameList = {}
-          rows.map(wayCode => {
-            nameList[`${wayCode.code}`] = {
-              name: wayCode.name,
-              status: true
+          rows.map(data => {
+            nameList[`${data.wayCode}`] = {
+              status: false
             }
-            return wayCode
+            return data
           })
           resolve(nameList)
         } else {

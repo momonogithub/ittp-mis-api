@@ -177,6 +177,8 @@ const checkWayCode = async wayCode => {
       return 'MGM'
     case 'KC Mahanakorn':
       return 'Staffcash'
+    case "MGM-0362\r\n":
+      return 'MGM-0362'
     case 'www':
     case 'www.':
     case 'WWW.':
