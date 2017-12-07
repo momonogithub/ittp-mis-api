@@ -20,8 +20,10 @@ export const getWayCode = async () => {
         if(!err){
           const nameList = {}
           rows.map(data => {
-            nameList[`${data.wayCode}`] = {
-              status: false
+            if(data.wayCode !== null) {
+              nameList[`${data.wayCode}`] = {
+                status: false
+              }
             }
             return data
           })

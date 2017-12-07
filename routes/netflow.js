@@ -4,7 +4,7 @@ import moment from 'moment'
 import { uniqBy, values } from 'lodash'
 import { reConvertDecimal, fixedTwoDecimal, getNumberOfDays } from './utilize'
 import { transactionByDate, loanByDate } from './query'
-import { maxBucket, startDate, NPL } from '../setting'
+import { maxBucket, startDate } from '../setting'
 import { netflowModel } from './model/netflow'
 import { netflow } from '../setting'
 

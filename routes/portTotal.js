@@ -2,7 +2,7 @@ import express from 'express'
 import connection from '../database'
 import moment from 'moment'
 import { uniqBy, groupBy, values, keys } from 'lodash'
-import { startDate, NPL } from '../setting'
+import { startDate } from '../setting'
 import { portTotalModel } from './model/portTotal'
 import { 
   transactionByDate,

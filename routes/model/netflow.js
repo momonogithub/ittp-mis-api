@@ -14,6 +14,7 @@ export const netflowModel = [
   'b10Size',
   'b11Size',
   'b12Size',
+  'b13Size',
   'b1Percent',
   'b2Percent',
   'b3Percent',
@@ -26,10 +27,13 @@ export const netflowModel = [
   'b10Percent',
   'b11Percent',
   'b12Percent',
+  'b13Percent',
   'ref',
 ]
 
 export const netflowOption = [
+  'DOUBLE',
+  'DOUBLE',
   'DOUBLE',
   'DOUBLE',
   'DOUBLE',
