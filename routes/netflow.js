@@ -10,7 +10,7 @@ import { netflow } from '../setting'
 
 const router = express.Router()
 
-router.get("/getNetflow/:month/:year", async function(req, res){
+router.get("/:month/:year", async function(req, res){
   try {
     const { year, month} = req.params // input param
     const date = moment(`${year}${month}`, 'YYYYM') 
@@ -20,14 +20,18 @@ router.get("/getNetflow/:month/:year", async function(req, res){
   }
 })
 
-router.get("/updateNetflow/:month/:year",async function(req, res){
-  try {
-    const { year, month} = req.params // input param
-    const date = moment(`${year}${month}`, 'YYYYM')
-    await updateNetflow(date.clone())
-    res.status(200).send(await getNetflow(date))
-  } catch(err) {
-    res.status(500).send(err)
+router.patch("/",async function(req, res){
+  if(req.body.year !== undefined || req.body.month !== undefined ) {
+    try {
+      const { year, month} = req.body // input param
+      const date = moment(`${year}${month}`, 'YYYYM')
+      await updateNetflow(date.clone())
+      res.status(200).send(await getNetflow(date))
+    } catch(err) {
+      res.status(500).send(err)
+    }
+  } else {
+    res.status(400).send('bad request')
   }
 })
 

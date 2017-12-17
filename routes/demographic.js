@@ -27,7 +27,7 @@ const demoList = [
   'Employment',
 ]
 
-router.get("/getDemographic/:month/:year", async function(req, res){
+router.get("/:month/:year", async function(req, res){
   try {
     const { year, month} = req.params // input param
     res.status(200).send(await getDemographic(year, month))
@@ -36,14 +36,18 @@ router.get("/getDemographic/:month/:year", async function(req, res){
   }
 })
 
-router.get("/updateDemographic/:month/:year", async function(req, res){
-  try {
-    const { year, month} = req.params // input param
-    await updateDemographic(moment(`${year}${month}`, 'YYYYM'))
-    res.status(200).send(await getDemographic(year, month))
-  } catch(err) {
-    console.log(err)
-    res.status(500).send(err)
+router.patch("/", async function(req, res){
+  if(req.body.year !== undefined || req.body.month !== undefined ) {
+    try {
+      const { year, month} = req.body // input param
+      await updateDemographic(moment(`${year}${month}`, 'YYYYM'))
+      res.status(200).send(await getDemographic(year, month))
+    } catch(err) {
+      console.log(err)
+      res.status(500).send(err)
+    }
+  } else {
+    res.status(400).send('bad request')
   }
 })
 

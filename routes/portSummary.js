@@ -18,7 +18,7 @@ import { portSummary } from '../setting'
 
 const router = express.Router()
 
-router.get("/getPortSummary/:month/:year", async function(req, res){
+router.get("/:month/:year", async function(req, res){
   try {
     const { year, month} = req.params // input param
     const date = moment(`${year}${month}`, 'YYYYM')
@@ -29,14 +29,18 @@ router.get("/getPortSummary/:month/:year", async function(req, res){
 
 })
 
-router.get("/updatePortSummary/:month/:year", async function(req, res){
-  try {
-    const { year, month} = req.params // input param
-    const date = moment(`${year}${month}`, 'YYYYM')
-    await updatePortSummary(date.clone())
-    res.status(200).send(await getPortSummary(date))
-  } catch (err) {
-    res.status(500).send(err)
+router.patch("/", async function(req, res){
+  if(req.body.year !== undefined || req.body.month !== undefined ) {
+    try {
+      const { year, month} = req.body // input param
+      const date = moment(`${year}${month}`, 'YYYYM')
+      const result = await updatePortSummary(date.clone())
+      res.status(200).send(result)
+    } catch (err) {
+      res.status(500).send(err)
+    }
+  } else {
+    res.status(400).send('bad request')
   }
 })
 
@@ -72,7 +76,9 @@ export const updatePortSummary = async date => {
   const datas = await portSummaryByDate(date)
   for(let item in datas) {
     await upsertPortSummary(datas[item])
+    delete datas[item]['ref']
   }
+  return datas
 }
 
 const portSummaryByDate = async date => {
@@ -124,13 +130,13 @@ const portSummaryByDate = async date => {
       })
       const transGroup = []
       const allTranGroup = []
-      let loanOpen = 0
+      let loanClose = 0
       loanGroup[count].map(loan => {
         const mapTran = monthlyTrans.filter(tran => {
           if(tran.loan_id === loan.loan_id) {
             const time = moment(tran.trans_date)
             if(tran.trc === 'PO' && time.isBetween(start.clone().subtract(1, 'seconds'), end)) {
-              loanOpen += 1
+              loanClose += 1
             }
             return true
           } else {
@@ -157,7 +163,7 @@ const portSummaryByDate = async date => {
       const summary = `${productGroup[count]}${ref}`
       let mtdRate = null
       if (calLoans.countLoans > 0) {
-        mtdRate = fixedTwoDecimal(loanOpen / calLoans.countLoans)
+        mtdRate = fixedTwoDecimal(loanClose / calLoans.countLoans)
       }
       if(i === 1 ) {
         const recovery = lastNPL[count] > 0 ? 
@@ -165,7 +171,7 @@ const portSummaryByDate = async date => {
         const item = [
           calLoans.countLoans, sumTrans.active, calLoans.averageSize, calLoans.averageInterest,
           calLoans.totalSize, multiLoan, totalPayment, calLoansMonth.countLoans,
-          calLoansMonth.totalSize, calLoansMonth.averageSize, calLoansMonth.averageInterest, loanOpen,
+          calLoansMonth.totalSize, calLoansMonth.averageSize, calLoansMonth.averageInterest, loanClose,
           mtdRate, sumTrans.count1To6, sumTrans.countNPL, sumTrans.delinquentRate1To3, 
           sumTrans.delinquentRate1To6, sumTrans.NPLRate, recovery, summary
         ]
