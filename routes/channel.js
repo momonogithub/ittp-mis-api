@@ -1,5 +1,5 @@
 import express from 'express'
-import connection from '../database'
+import { misConnection } from '../database'
 import moment from 'moment'
 import { startDate } from '../setting'
 import { appByDate } from './query'
@@ -92,7 +92,7 @@ const channelByDate = async date => {
 
 const getChannelByKey = async key => {
   return new Promise(function(resolve, reject) {
-    connection.query(
+    misConnection.query(
       `SELECT * FROM ${channel} WHERE ref = ?`,
       [key],
       function(err, rows, fields) {
@@ -119,13 +119,13 @@ const upsertChannel = async (ref, wayCode, data) => {
   let update = ''
   for(let item in insertSet) {
     name = name.concat(`${item}, `)
-    value = value.concat(`${connection.escape(insertSet[item])}, `)
-    update = update.concat(`${item}=${connection.escape(insertSet[item])}, `)
+    value = value.concat(`${misConnection.escape(insertSet[item])}, `)
+    update = update.concat(`${item}=${misConnection.escape(insertSet[item])}, `)
   }
   name = name.slice(0, name.length-2)
   value = value.slice(0, value.length-2)
   update = update.slice(0, update.length-2)
-  connection.query(`INSERT INTO ${channel} (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
+  misConnection.query(`INSERT INTO ${channel} (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
   function (err) {
     if (err) throw err
   })

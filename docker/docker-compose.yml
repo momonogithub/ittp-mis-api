@@ -1,0 +1,23 @@
+ittpmis-mysql:
+  image: mysql
+  environment:
+    - MYSQL_ROOT_PASSWORD=1234
+    - MYSQL_DATABASE=ittpmis
+  ports:
+    - "3308:3306"
+  restart: always
+  command: mysqld --character-set-server=tis620 --collation-server=tis620_thai_ci --max-allowed-packet=1073741824
+  container_name: ittpmis-mysql
+
+phpmyadmin-mis:
+  image: phpmyadmin/phpmyadmin
+  environment:
+    - MYSQL_USER=root
+    - MYSQL_PASSWORD=1234
+    - MYSQL_ROOT_PASSWORD=1234
+  links:
+    - ittpmis-mysql:db
+  ports:
+    - "8082:80"
+  restart: always
+  container_name: phpmyadmin-mis

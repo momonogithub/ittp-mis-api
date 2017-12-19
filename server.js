@@ -1,13 +1,13 @@
 import bcrypt from 'bcrypt'
 import bodyParser from 'body-parser'
 import cors from 'cors'
-import connection from './database'
 import express from 'express'
 import jwt from 'jsonwebtoken'
 import moment from 'moment'
 import passport from 'passport'
 import passportJWT from 'passport-jwt'
 import { findIndex } from 'lodash'
+import { users } from './database'
 // routes
 import channel from './routes/channel'
 import demographic from './routes/demographic'
@@ -17,17 +17,9 @@ import portTotal from './routes/portTotal'
 import portSummary from './routes/portSummary'
 import product from './routes/product'
 import wayCode from './routes/wayCode'
-import { getUserById, getUser, updateUserByName} from './routes/user'
+import { updateUserByName } from './routes/user'
 
 const app = express()
-
-let users = []
-
-const queryUsers = async () => {
-  users = await getUser() 
-}
-
-queryUsers()
 
 const ExtractJwt = passportJWT.ExtractJwt
 const JwtStrategy = passportJWT.Strategy

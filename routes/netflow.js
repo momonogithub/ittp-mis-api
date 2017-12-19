@@ -1,5 +1,5 @@
 import express from 'express'
-import connection from '../database'
+import { misConnection } from '../database'
 import moment from 'moment'
 import { uniqBy, values } from 'lodash'
 import { reConvertDecimal, fixedTwoDecimal, getNumberOfDays } from './utilize'
@@ -156,7 +156,7 @@ const netflowByDate = async date => {
 
 const getNetflowByKey = async key => {
   return new Promise(function(resolve, reject) {
-    connection.query(
+    misConnection.query(
       `SELECT * FROM ${netflow} WHERE ref = ?`,
       [key],
       function(err, rows, fields) {
@@ -180,13 +180,13 @@ const upsertNetflow = async (ref, data) => {
   let update = ''
   for(let count = 0 ; count < row.length ; count ++) {
     name = name.concat(`${netflowModel[count]}, `)
-    value = value.concat(`${connection.escape(row[count])}, `)
-    update = update.concat(`${netflowModel[count]}=${connection.escape(row[count])}, `)
+    value = value.concat(`${misConnection.escape(row[count])}, `)
+    update = update.concat(`${netflowModel[count]}=${misConnection.escape(row[count])}, `)
   }
   name = name.slice(0, name.length-2)
   value = value.slice(0, value.length-2)
   update = update.slice(0, update.length-2)
-  connection.query(`INSERT INTO ${netflow} (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
+  misConnection.query(`INSERT INTO ${netflow} (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
   function (err) {
     if (err) throw err
   })

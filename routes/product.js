@@ -1,5 +1,5 @@
 import express from 'express'
-import connection from '../database'
+import { coreConnection } from '../database'
 
 const router = express.Router()
 
@@ -14,7 +14,7 @@ router.get('/getNameList', async function(req, res){
 
 export const queryProductName = async () => {
   return new Promise(function(resolve, reject) {
-    connection.query(
+    coreConnection.query(
       `SELECT product_id, product_name FROM Product 
         WHERE status = 'active' ORDER BY product_id ASC `,
       function(err, rows, fields) {

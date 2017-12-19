@@ -1,5 +1,5 @@
 import express from 'express'
-import connection from '../database'
+import { misConnection } from '../database'
 import moment from 'moment'
 import { demographicGroup }  from './demographicGroup'
 import { startDate, maxBucket } from '../setting'
@@ -43,7 +43,6 @@ router.patch("/", async function(req, res){
       await updateDemographic(moment(`${year}${month}`, 'YYYYM'))
       res.status(200).send(await getDemographic(year, month))
     } catch(err) {
-      console.log(err)
       res.status(500).send(err)
     }
   } else {
@@ -195,7 +194,6 @@ const calDemographic = async (datas, start, end) => {
 }
 
 const checkData = data => {
-  console.log(data)
   if(data.length > 0) {
     return {
       totalLoan: data[0].totalLoan,
@@ -223,7 +221,7 @@ const checkData = data => {
 
 const getTotalDemographic = async key => {
   return new Promise(function(resolve, reject) {
-    connection.query(
+    misConnection.query(
       `SELECT * FROM ${demographic} WHERE demoGroup = 'Total' AND ref = ?`,
       [key],
       function(err, rows, fields) {
@@ -239,7 +237,7 @@ const getTotalDemographic = async key => {
 
 const getDemographicByKey = async key => {
   return new Promise(function(resolve, reject) {
-    connection.query(
+    misConnection.query(
       `SELECT * FROM ${demographic} WHERE ref = ?`,
       [key],
       function(err, rows, fields) {
@@ -259,13 +257,13 @@ const upsertDemographic = async data => {
   let update = ''
   for(let item in data) {
     name = name.concat(`${item}, `)
-    value = value.concat(`${connection.escape(data[item])}, `)
-    update = update.concat(`${item}=${connection.escape(data[item])}, `)
+    value = value.concat(`${misConnection.escape(data[item])}, `)
+    update = update.concat(`${item}=${misConnection.escape(data[item])}, `)
   }
   name = name.slice(0, name.length-2)
   value = value.slice(0, value.length-2)
   update = update.slice(0, update.length-2)
-  connection.query(`INSERT INTO ${demographic} (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
+  misConnection.query(`INSERT INTO ${demographic} (${name}) VALUES (${value}) ON DUPLICATE KEY UPDATE ${update}`,
   function (err) {
     if (err) throw err
   })

@@ -1,5 +1,5 @@
 import express from 'express'
-import connection from '../database'
+import { coreConnection } from '../database'
 
 const router = express.Router()
 
@@ -14,7 +14,7 @@ router.get('/getNameList', async function(req, res){
 
 export const getWayCode = async () => {
   return new Promise(function(resolve, reject) {
-    connection.query(
+    coreConnection.query(
       `SELECT DISTINCT wayCode AS wayCode 
         FROM Applications 
         ORDER BY Applications.wayCode ASC`,

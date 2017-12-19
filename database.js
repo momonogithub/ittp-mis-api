@@ -12,32 +12,19 @@ import { updateDemographic } from './routes/demographic'
 import { updatePortSummary } from './routes/portSummary'
 import { updatePortTotal } from './routes/portTotal'
 import { updateNetflow } from './routes/netflow'
-import { intitialUser } from './routes/user'
 import { 
   startDate, channel, demographic,
   netflow, portSummary, portTotal,
-  userTabel } from './setting'
+  userTabel, coreLogin, misLogin } from './setting'
+import { getUser, intitialUser } from './routes/user'
 
+export const coreConnection = mysql.createConnection(coreLogin)
+export const misConnection = mysql.createConnection(misLogin)
+export let users = []
 
-const database = 'ittpdev'
-const host = 'localhost'
-const user = 'root'
-const password = '1234'
-const port = 3306
-
-const loginMysql = {
-  host     : host,
-  user     : user,
-  password : password,
-  port     :  port,
-  database : database
-}
-
-const connection = mysql.createConnection(loginMysql)
-
-connection.connect(async function(err){
+misConnection.connect(async function(err){
   if(!err) {
-    let sql = await checkExistTable(database, userTabel)
+    let sql = await checkExistTable(misLogin.database, userTabel)
     if(!(sql.length > 0)) {
       console.log('---------- Create Table ----------')
       await Promise.all([
@@ -48,15 +35,14 @@ connection.connect(async function(err){
         createTable(netflow, netflowModel, netflowOption, netflowUnique),
         createTable(userTabel, userModel, userOption, userUnique),
       ])
-      console.log(await intitialUser())
+      await intitialUser()
       const start = moment(startDate)
       const now = new Date()
       let month = start.month()
       let year = start.year()
       const currMonth = now.getMonth()
       const currYear = now.getFullYear()
-      console.log('---------- Auto Update ----------')
-      console.time('Update')
+      console.log('---------- Auto update please wait ----------')
       while(year !== currYear || month !== currMonth) {
         const date = moment(`${year}${month+1}`, 'YYYYM')
         await Promise.all([
@@ -66,14 +52,12 @@ connection.connect(async function(err){
           updatePortSummary(date.clone()),
           updatePortTotal(date.clone()),
         ])
-        console.log(`Update Data at ${month+1}/${year} successful`)
         month += 1
         if(month > 11) {
           year += 1
           month = 0
         }
       }
-      console.timeEnd('Update')
     }
     cron.schedule('0 0 0 1 * *', async function(){
       const now = new Date()
@@ -88,6 +72,7 @@ connection.connect(async function(err){
         updatePortTotal(date.clone()),
       ])
     })
+    users = await getUser()
     console.log('Connection successful')
   } else {
     console.log(err)
@@ -96,7 +81,7 @@ connection.connect(async function(err){
 
 const checkExistTable = async (dbName, tableName) => {
   return new Promise(function(resolve, reject) {
-    connection.query(
+    misConnection.query(
       `SELECT * 
       FROM information_schema.tables
       WHERE table_schema = ? 
@@ -125,7 +110,7 @@ const createTable = async (tableName, table, option, unique) => {
       uniqueSql = `${uniqueSql}${unique[count]}, `
     }
     uniqueSql = uniqueSql.slice(0, uniqueSql.length-2)
-    connection.query(
+    misConnection.query(
       `CREATE TABLE ${tableName} (${sql}, UNIQUE KEY ${tableName}Unique (${uniqueSql}))`,
       function(err, rows, fields) {
         if(!err){
@@ -139,5 +124,3 @@ const createTable = async (tableName, table, option, unique) => {
     )
   })
 }
-
-export default connection

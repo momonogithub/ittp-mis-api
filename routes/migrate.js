@@ -1,5 +1,5 @@
 import express from 'express'
-import connection from '../database'
+import { coreConnection } from '../database'
 import moment from 'moment'
 
 const router = express.Router()
@@ -66,7 +66,7 @@ router.use('/mapNewApp', async function(req, res){
 
 const queryLoan = async () => {
   return new Promise(function(resolve, reject) {
-    connection.query(
+    coreConnection.query(
       `SELECT * FROM Loan`,
       function(err, rows, fields) {
         if(!err){
@@ -81,7 +81,7 @@ const queryLoan = async () => {
 
 const queryApplication = async () => {
   return new Promise(function(resolve, reject) {
-    connection.query(
+    coreConnection.query(
       `SELECT * FROM Applications`,
       function(err, rows, fields) {
         if(!err){
@@ -94,9 +94,9 @@ const queryApplication = async () => {
   })
 }
 
-const loanOpenByLoanId = async loanId => {
+const loanOpenByLoanId = async loanId => {coreConnection
   return new Promise(function(resolve, reject) {
-    connection.query(
+    coreConnection.query(
       `SELECT * FROM Transaction WHERE trc = 'LO' AND loan_id = ? LIMIT 1`,
       [loanId],
       function(err, rows, fields) {
@@ -110,9 +110,9 @@ const loanOpenByLoanId = async loanId => {
   })
 }
 
-const appByCitizenId = async citizenId => {
+const appByCitizenId = async citizenId => {coreConnection
   return new Promise(function(resolve, reject) {
-    connection.query(
+    coreConnection.query(
       `SELECT * FROM Applications WHERE citizenId = ? AND createdDate IS NULL LIMIT 1`,
       [citizenId],
       function(err, rows, fields) {
@@ -129,10 +129,10 @@ const appByCitizenId = async citizenId => {
 const updateAppById = async (mapData, appId) => {
   let update = ''
   for(let item in mapData) {
-    update = update.concat(`${item}=${connection.escape(mapData[item])}, `)
+    update = update.concat(`${item}=${coreConnection.escape(mapData[item])}, `)
   }
   update = update.slice(0, update.length-2)
-  connection.query(`UPDATE Applications SET ${update} WHERE id = ?`,
+  coreConnection.query(`UPDATE Applications SET ${update} WHERE id = ?`,
   [appId],
   function (err) {
     console.log(`update ${appId}`)
