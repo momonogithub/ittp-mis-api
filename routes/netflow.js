@@ -83,7 +83,7 @@ export const updateNetflow = async date => {
 const netflowByDate = async date => {
   const result = {}
   const displayDate = []
-  let lastTotal = 0
+  let lastAmount = new Array(maxBucket).fill(0)
   date.subtract(1, 'month')
   // count variable
   for(let month = 0 ; month < 2 ; month += 1) {
@@ -112,41 +112,44 @@ const netflowByDate = async date => {
         for(let b = 0 ; b < maxBucket ; b +=1) {
           bucket[b] += tran[`b${b + 1}`] // not include b0
           osbTotal += tran[`b${b + 1}`]
+          if(month === 0 && b < maxBucket - 1) {
+            lastAmount[b+1] += tran[`b${b + 1}`]
+          }
         }
         osb += temp
         osbTotal += temp
         return tran
       })
     )
-    osb = reConvertDecimal(osb)
-    osbTotal = reConvertDecimal(osbTotal)
-    const firstBucket = osb === 0 ? 
-    null : fixedTwoDecimal(reConvertDecimal(bucket[0]) / osb * 100)
-    const percentBucket = [firstBucket]
-    for(let b = 1 ; b < maxBucket ; b+= 1 ) {
-      if(b === 1) {
-        bucket[b-1] = reConvertDecimal(bucket[b-1])
-      }
-      if(bucket[b] === 0) {
-        percentBucket.push(null)
-      }else {
-        bucket[b] = reConvertDecimal(bucket[b])
-        percentBucket.push(
-          fixedTwoDecimal(bucket[b] / bucket[b-1] * 100)
-        )
-      }
-    }
-    // push data to result
+    // calculate  data to result if in 13 month
     if(month > 0) {
+      osb = reConvertDecimal(osb)
+      osbTotal = reConvertDecimal(osbTotal)
+      const firstBucket = osb === 0 ? 
+      null : fixedTwoDecimal(reConvertDecimal(bucket[0]) / osb * 100)
+      const percentBucket = [firstBucket]
+      for(let b = 1 ; b < maxBucket ; b+= 1 ) {
+        bucket[b] = reConvertDecimal(bucket[b])
+        if(b === 1) {
+          bucket[b-1] = reConvertDecimal(bucket[b-1])
+        }
+        if(lastAmount[b] === 0) {
+          percentBucket.push(null)
+        }else {
+          percentBucket.push(
+            fixedTwoDecimal(bucket[b] / reConvertDecimal(lastAmount[b]) * 100)
+          )
+        }
+      }
       result[key] = {}
       result[key].osb = osb
       result[key].osbTotal = osbTotal
-      result[key].osbPercent = lastTotal === 0? 
-      null : fixedTwoDecimal(osb / lastTotal * 100)
+      result[key].osbPercent = lastAmount[0] === 0? 
+      null : fixedTwoDecimal(osb / lastAmount[0] * 100)
       result[key].bucket = bucket
       result[key].percentBucket = percentBucket
     }
-    lastTotal = osbTotal
+    lastAmount[0] = osbTotal
   }
   return result
 }
