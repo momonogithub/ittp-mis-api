@@ -15,7 +15,9 @@ router.get('/getNameList', async function(req, res){
 export const getWayCode = async () => {
   return new Promise(function(resolve, reject) {
     connection.query(
-      `SELECT DISTINCT wayCode AS wayCode FROM Applications `,
+      `SELECT DISTINCT wayCode AS wayCode 
+        FROM Applications 
+        ORDER BY Applications.wayCode ASC`,
       function(err, rows, fields) {
         if(!err){
           const nameList = {}

@@ -17,9 +17,17 @@ import portTotal from './routes/portTotal'
 import portSummary from './routes/portSummary'
 import product from './routes/product'
 import wayCode from './routes/wayCode'
-import { getUserById, getUserByName, updateUserByName} from './routes/user'
+import { getUserById, getUser, updateUserByName} from './routes/user'
 
 const app = express()
+
+let users = []
+
+const queryUsers = async () => {
+  users = await getUser() 
+}
+
+queryUsers()
 
 const ExtractJwt = passportJWT.ExtractJwt
 const JwtStrategy = passportJWT.Strategy
@@ -30,7 +38,6 @@ jwtOptions.secretOrKey = 'ittpMis'
 
 const strategy = new JwtStrategy(jwtOptions, async function(jwt_payload, next) {  
   // usually this would be a database call:
-  const users = await getUserById(jwt_payload.id)
   const user = users[findIndex(users, {id: jwt_payload.id})]
   if (user) {
     next(null, user)
@@ -62,7 +69,6 @@ app.post("/login", async function(req, res) {
     const name = req.body.name
     const password = req.body.password
         // usually this would be a database call:
-    const users = await getUserByName(name)
     const user = users[findIndex(users, {username: name})]
     if( ! user ){
       res.status(401).json({message:"User doesn't exist"})

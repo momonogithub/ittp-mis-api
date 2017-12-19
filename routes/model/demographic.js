@@ -1,4 +1,5 @@
 export const demographicModel = [
+  'totalAccount',
   'newAccount',
   'loanSize',
   'averageIntRate',
@@ -12,6 +13,7 @@ export const demographicModel = [
 ]
 
 export const demographicOption = [
+  'INT',
   'INT',
   'DOUBLE',
   'DOUBLE',

@@ -36,11 +36,10 @@ export const addUser = async user => {
   })
 }
 
-export const getUserByName = async name => {
+export const getUser = async () => {
   return new Promise(function(resolve, reject) {
     connection.query(
-      `SELECT * FROM ${userTabel} WHERE username = ?`,
-      [name],
+      `SELECT * FROM ${userTabel}`,
       function(err, rows, fields) {
         if(!err){
           resolve(rows)

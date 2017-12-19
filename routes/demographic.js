@@ -116,21 +116,22 @@ export const updateDemographic = async date => {
       dataGroup[demo][item] = await calDemographic(dataGroup[demo][item], date, end)
       const sqlRow = {}
       if(demo === 'Total') {
-        sqlRow[`${[demographicModel[7]]}`] = 'Total'
-        sqlRow[`${[demographicModel[8]]}`] = `Total`
-        sqlRow[`${[demographicModel[9]]}`] = key
+        sqlRow[`${[demographicModel[8]]}`] = 'Total'
+        sqlRow[`${[demographicModel[9]]}`] = `Total`
+        sqlRow[`${[demographicModel[10]]}`] = key
       } else {
-        sqlRow[`${[demographicModel[7]]}`] = demo
-        sqlRow[`${[demographicModel[8]]}`]  = item
-        sqlRow[`${[demographicModel[9]]}`] = key
+        sqlRow[`${[demographicModel[8]]}`] = demo
+        sqlRow[`${[demographicModel[9]]}`]  = item
+        sqlRow[`${[demographicModel[10]]}`] = key
       }
-      sqlRow[`${[demographicModel[0]]}`] = dataGroup[demo][item].newAccount
-      sqlRow[`${[demographicModel[1]]}`] = dataGroup[demo][item].loanSize
-      sqlRow[`${[demographicModel[2]]}`] = dataGroup[demo][item].averageInt
-      sqlRow[`${[demographicModel[3]]}`] = dataGroup[demo][item].averageLoanTerm
-      sqlRow[`${[demographicModel[4]]}`] = dataGroup[demo][item].osb
-      sqlRow[`${[demographicModel[5]]}`] = dataGroup[demo][item].delinquentRate
-      sqlRow[`${[demographicModel[6]]}`] = dataGroup[demo][item].nplRate
+      sqlRow[`${[demographicModel[0]]}`] = dataGroup[demo][item].totalAccount
+      sqlRow[`${[demographicModel[1]]}`] = dataGroup[demo][item].newAccount
+      sqlRow[`${[demographicModel[2]]}`] = dataGroup[demo][item].loanSize
+      sqlRow[`${[demographicModel[3]]}`] = dataGroup[demo][item].averageInt
+      sqlRow[`${[demographicModel[4]]}`] = dataGroup[demo][item].averageLoanTerm
+      sqlRow[`${[demographicModel[5]]}`] = dataGroup[demo][item].osb
+      sqlRow[`${[demographicModel[6]]}`] = dataGroup[demo][item].delinquentRate
+      sqlRow[`${[demographicModel[7]]}`] = dataGroup[demo][item].nplRate
       await upsertDemographic(sqlRow)
     }
   }
@@ -178,6 +179,7 @@ const calDemographic = async (datas, start, end) => {
     ) 
   }
   return {
+    totalAccount: datas.length,
     newAccount : newAccount,
     loanSize: reConvertDecimal(loanSize),
     averageInt: datas.length > 0 ? 
@@ -193,9 +195,11 @@ const calDemographic = async (datas, start, end) => {
 }
 
 const checkData = data => {
+  console.log(data)
   if(data.length > 0) {
     return {
-      newAccount : data[0].newAccount,
+      totalAccount: data[0].totalAccount,
+      newAccount: data[0].newAccount,
       loanSize: data[0].loanSize,
       averageInt: data[0].averageIntRate,
       averageLoanTerm: data[0].averageLoanTerm,
@@ -205,6 +209,7 @@ const checkData = data => {
     }
   } else {
     return {
+      totalAccount: 'No Data',
       newAccount : 'No Data',
       loanSize: 'No Data',
       averageInt: 'No Data',
