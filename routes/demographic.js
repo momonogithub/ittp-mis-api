@@ -124,7 +124,7 @@ export const updateDemographic = async date => {
         sqlRow[`${[demographicModel[9]]}`]  = item
         sqlRow[`${[demographicModel[10]]}`] = key
       }
-      sqlRow[`${[demographicModel[0]]}`] = dataGroup[demo][item].totalAccount
+      sqlRow[`${[demographicModel[0]]}`] = dataGroup[demo][item].totalLoan
       sqlRow[`${[demographicModel[1]]}`] = dataGroup[demo][item].newAccount
       sqlRow[`${[demographicModel[2]]}`] = dataGroup[demo][item].loanSize
       sqlRow[`${[demographicModel[3]]}`] = dataGroup[demo][item].averageInt
@@ -179,7 +179,7 @@ const calDemographic = async (datas, start, end) => {
     ) 
   }
   return {
-    totalAccount: datas.length,
+    totalLoan: datas.length,
     newAccount : newAccount,
     loanSize: reConvertDecimal(loanSize),
     averageInt: datas.length > 0 ? 
@@ -198,7 +198,7 @@ const checkData = data => {
   console.log(data)
   if(data.length > 0) {
     return {
-      totalAccount: data[0].totalAccount,
+      totalLoan: data[0].totalLoan,
       newAccount: data[0].newAccount,
       loanSize: data[0].loanSize,
       averageInt: data[0].averageIntRate,
@@ -209,7 +209,7 @@ const checkData = data => {
     }
   } else {
     return {
-      totalAccount: 'No Data',
+      totalLoan: 'No Data',
       newAccount : 'No Data',
       loanSize: 'No Data',
       averageInt: 'No Data',

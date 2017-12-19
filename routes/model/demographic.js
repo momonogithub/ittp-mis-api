@@ -1,5 +1,5 @@
 export const demographicModel = [
-  'totalAccount',
+  'totalLoan',
   'newAccount',
   'loanSize',
   'averageIntRate',
