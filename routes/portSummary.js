@@ -3,7 +3,7 @@ import { misConnection } from '../database'
 import moment from 'moment'
 import { uniqBy, groupBy, values, keys } from 'lodash'
 import { startDate } from '../setting'
-import { transactionByDate, loanByDate, appByDate } from './query'
+import { transactionByDate, loanByDate } from './query'
 import { queryProductName } from './product'
 import { portSummaryModel } from './model/portSummary'
 import { 
