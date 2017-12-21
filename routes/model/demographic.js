@@ -12,7 +12,7 @@ export const demographicModel = [
   'ref'
 ]
 
-export const demographicOption = [
+export const demographicType = [
   'INT',
   'INT',
   'DOUBLE',

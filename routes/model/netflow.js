@@ -31,7 +31,7 @@ export const netflowModel = [
   'ref',
 ]
 
-export const netflowOption = [
+export const netflowType = [
   'DOUBLE',
   'DOUBLE',
   'DOUBLE',

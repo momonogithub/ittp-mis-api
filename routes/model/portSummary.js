@@ -21,7 +21,7 @@ export const portSummaryModel = [
   'ref',
 ]
 
-export const portSummaryOption = [
+export const portSummaryType = [
   'INT',
   'INT',
   'DOUBLE',

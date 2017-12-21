@@ -1,12 +1,12 @@
 import cron from 'node-cron'
 import mysql from 'mysql'
 import moment from 'moment'
-import { channelModel, channelOption, channelUnique } from './routes/model/channel'
-import { demographicModel, demographicOption, demographicUnique } from './routes/model/demographic'
-import { portTotalModel, portTotalOption, portTotalUnique } from './routes/model/portTotal'
-import { portSummaryModel, portSummaryOption, portSummaryUnique } from './routes/model/portSummary'
-import { netflowModel, netflowOption, netflowUnique } from './routes/model/netflow'
-import { userModel, userOption, userUnique} from './routes/model/user'
+import { channelModel, channelType, channelUnique } from './routes/model/channel'
+import { demographicModel, demographicType, demographicUnique } from './routes/model/demographic'
+import { portTotalModel, portTotalType, portTotalUnique } from './routes/model/portTotal'
+import { portSummaryModel, portSummaryType, portSummaryUnique } from './routes/model/portSummary'
+import { netflowModel, netflowType, netflowUnique } from './routes/model/netflow'
+import { userModel, userType, userUnique} from './routes/model/user'
 import { updateChannel } from './routes/channel'
 import { updateDemographic } from './routes/demographic'
 import { updatePortSummary } from './routes/portSummary'
@@ -28,12 +28,12 @@ misConnection.connect(async function(err){
     if(!(sql.length > 0)) {
       console.log('---------- Create Table ----------')
       await Promise.all([
-        createTable(channel, channelModel, channelOption, channelUnique),
-        createTable(demographic, demographicModel, demographicOption, demographicUnique),
-        createTable(portSummary, portSummaryModel, portSummaryOption, portSummaryUnique),
-        createTable(portTotal, portTotalModel, portTotalOption, portTotalUnique),
-        createTable(netflow, netflowModel, netflowOption, netflowUnique),
-        createTable(userTabel, userModel, userOption, userUnique),
+        createTable(channel, channelModel, channelType, channelUnique),
+        createTable(demographic, demographicModel, demographicType, demographicUnique),
+        createTable(portSummary, portSummaryModel, portSummaryType, portSummaryUnique),
+        createTable(portTotal, portTotalModel, portTotalType, portTotalUnique),
+        createTable(netflow, netflowModel, netflowType, netflowUnique),
+        createTable(userTabel, userModel, userType, userUnique),
       ])
       await intitialUser()
       const start = moment(startDate)
@@ -99,11 +99,11 @@ const checkExistTable = async (dbName, tableName) => {
   })
 }
 
-const createTable = async (tableName, table, option, unique) => {
+const createTable = async (tableName, table, type, unique) => {
   return new Promise(function(resolve, reject) {
     let sql = 'id INT AUTO_INCREMENT PRIMARY KEY'
     for(let count = 0 ; count < table.length ; count += 1) {
-      sql = `${sql}, ${table[count]} ${option[count]}`
+      sql = `${sql}, ${table[count]} ${type[count]}`
     }
     let uniqueSql = ''
     for(let count = 0 ; count < unique.length ; count += 1) {
@@ -122,5 +122,4 @@ const createTable = async (tableName, table, option, unique) => {
         }
       }
     )
-  })
-}
+  })}

@@ -5,7 +5,7 @@ export const userModel = [
   'lastLoginDate',
 ]
 
-export const userOption = [
+export const userType = [
   'VARCHAR(20) NOT NULL',
   'CHAR(60) NOT NULL',
   'DATETIME NOT NULL',

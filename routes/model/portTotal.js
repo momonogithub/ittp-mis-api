@@ -22,7 +22,7 @@ export const portTotalModel = [
   'ref',
 ]
 
-export const portTotalOption = [
+export const portTotalType = [
   'INT',
   'INT',
   'INT',

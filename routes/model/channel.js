@@ -6,7 +6,7 @@ export const channelModel = [
   'ref',
 ]
 
-export const channelOption = [
+export const channelType = [
   'INT',
   'INT',
   'DOUBLE',
