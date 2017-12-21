@@ -82,35 +82,28 @@ export const updateNetflow = async date => {
 
 const netflowByDate = async date => {
   const result = {}
-  const displayDate = []
   let lastAmount = new Array(maxBucket).fill(0)
   date.subtract(1, 'month')
-  // count variable
   for(let month = 0 ; month < 2 ; month += 1) {
     let osbTotal = 0
     let osb = 0
-    let bucket = new Array(maxBucket).fill(0) // not count b0
+    let bucket = new Array(maxBucket).fill(0)
     const key = date.format('YYYYMM')
-    // build time gap
     let start = date.format("YYYY-MM-DD HH:mm:ss")
     let end = date.add(1, 'month').format("YYYY-MM-DD HH:mm:ss")
-    //query Transaction and make unique by loan_id
     let [trans, loans] = await Promise.all([
       transactionByDate(start, end),
       loanByDate(startDate, end)
     ]) 
-    // summary data by one transaction
     trans =  uniqBy(trans, 'loan_id')
     await Promise.all(
       trans.map(async tran => {
-        // osb calculate
         const loan = loans.filter(loan => loan.loan_id === tran.loan_id)
         const duration = getNumberOfDays(tran.trans_date, date.toDate())
         const newInterest = loan[0].daily_int * duration
         const temp = tran.cf_principal + tran.cf_interest + tran.cf_fee + newInterest
-        // bucket calculate
         for(let b = 0 ; b < maxBucket ; b +=1) {
-          bucket[b] += tran[`b${b + 1}`] // not include b0
+          bucket[b] += tran[`b${b + 1}`]
           osbTotal += tran[`b${b + 1}`]
           if(month === 0 && b < maxBucket - 1) {
             lastAmount[b+1] += tran[`b${b + 1}`]
@@ -121,7 +114,6 @@ const netflowByDate = async date => {
         return tran
       })
     )
-    // calculate  data to result if in 13 month
     if(month > 0) {
       osb = reConvertDecimal(osb)
       osbTotal = reConvertDecimal(osbTotal)
