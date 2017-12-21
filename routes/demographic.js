@@ -155,7 +155,7 @@ const calDemographic = async (datas, start, end) => {
           installLoan += 1
         }
         const time = moment(data.open_date)
-        if(time.isBetween(start.clone().subtract(1, 'seconds'), end)) {
+        if(time.isBetween(start, end, null, '[]')) {
           newAccount += 1
         }
         if(data['transaction'].length > 0) {

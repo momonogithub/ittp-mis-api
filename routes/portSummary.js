@@ -122,7 +122,7 @@ const portSummaryByDate = async date => {
       let activeLoan = 0
       const loansMonth = loanGroup[count].filter(loan => {
         const time = moment(loan.open_date)
-        if(time.isBetween(start.clone().subtract(1, 'seconds'), end)) {
+        if(time.isBetween(start, end, null, '[]')) {
           return true
         } else {
           return false
@@ -135,7 +135,7 @@ const portSummaryByDate = async date => {
         const mapTran = monthlyTrans.filter(tran => {
           if(tran.loan_id === loan.loan_id) {
             const time = moment(tran.trans_date)
-            if(tran.trc === 'PO' && time.isBetween(start.clone().subtract(1, 'seconds'), end)) {
+            if(tran.trc === 'PO' && time.isBetween(start, end, null, '[]')) {
               loanClose += 1
             }
             return true
