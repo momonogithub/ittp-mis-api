@@ -104,12 +104,13 @@ export const updateDemographic = async date => {
     const tran = transactions.filter(tran => tran.loan_id === loan.loan_id)
     const app = applications.filter(app => app.id === loan.app_id)
     const address = addresses.filter(address => address.app_id === loan.app_id)
+    const officeProvince = address.length > 0 ? address[0].province : null
     delete loan.created_date
     datas.push({
       ...app[0],
       ...loan,
       transaction : tran,
-      officeProvince : address[0].province
+      officeProvince : officeProvince
     })
     return loan
   })
